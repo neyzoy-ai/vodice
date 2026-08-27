@@ -335,6 +335,14 @@ button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:2px
   border-radius:100px;
   white-space:nowrap;
 }
+.db-list-toggle.is-warn .db-list-toggle-label svg{ color:var(--danger); }
+.db-list-toggle.is-warn .db-list-toggle-count{
+  color:var(--danger);
+  background:var(--danger-soft);
+  border-color:rgba(224,113,111,0.35);
+}
+.db-list-toggle.is-warn:hover{ border-color:var(--danger); color:var(--danger); }
+.db-list-toggle.is-warn:hover .db-list-toggle-label svg{ color:var(--danger); }
 
 .sort-row{
   display:flex;
@@ -746,6 +754,30 @@ footer{
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>
+    </div>
+
+    <button type="button" class="db-list-toggle is-warn" id="missingToggleBtn" style="display:none; margin-top:16px;">
+      <span class="db-list-toggle-label">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span id="missingToggleText">Zobrazit nenalezené artikly</span>
+      </span>
+      <span class="db-list-toggle-right">
+        <span class="db-list-toggle-count" id="missingToggleCount"></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="missingChevron" style="transition:transform .18s ease"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+    </button>
+    <div id="missingListSection" style="display:none; margin-top:14px;">
+      <div class="table-frame">
+        <table>
+          <thead>
+            <tr>
+              <th>Zadáno</th>
+              <th>Množství</th>
+            </tr>
+          </thead>
+          <tbody id="missingBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1172,6 +1204,7 @@ function runSearch(){
     return;
   }
 
+  missingSectionOpen = false;
   lastResults = [];
   items.forEach(it=>{
     const exact = byCode.get(normCode(it.code));
@@ -1196,6 +1229,8 @@ function runSearch(){
   excelBtn.style.display = 'inline-flex';
 }
 
+let missingSectionOpen = false;
+
 function renderResults(){
   const body = document.getElementById('resultsBody');
   const summary = document.getElementById('summary');
@@ -1210,23 +1245,16 @@ function renderResults(){
     });
   }
 
-  const found = rows.filter(r=>r.rec).length;
-  const missing = rows.length - found;
+  const foundRows = rows.filter(r=>r.rec);
+  const missingRows = rows.filter(r=>!r.rec);
+
   summary.innerHTML = `
     <span class="pill">Celkem položek: <b>${rows.length}</b></span>
-    <span class="pill">Nalezeno: <b>${found}</b></span>
-    <span class="pill ${missing?'warn':''}">Nenalezeno: <b>${missing}</b></span>
+    <span class="pill">Nalezeno: <b>${foundRows.length}</b></span>
+    <span class="pill ${missingRows.length?'warn':''}">Nenalezeno: <b>${missingRows.length}</b></span>
   `;
 
-  body.innerHTML = rows.map(r=>{
-    if(!r.rec){
-      return `<tr class="row-missing">
-        <td><span class="pos-badge">?</span></td>
-        <td class="mono">${escapeHtml(r.input)}</td>
-        <td colspan="3" class="tag-missing">Artikl nenalezen v databázi</td>
-        <td class="qty">${escapeHtml(r.qty)}</td>
-      </tr>`;
-    }
+  body.innerHTML = foundRows.map(r=>{
     const rec = r.rec;
     return `<tr>
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
@@ -1237,7 +1265,33 @@ function renderResults(){
       <td class="qty">${escapeHtml(r.qty)}</td>
     </tr>`;
   }).join('');
+
+  const missingToggleBtn = document.getElementById('missingToggleBtn');
+  const missingListSection = document.getElementById('missingListSection');
+  const missingBody = document.getElementById('missingBody');
+
+  if(missingRows.length === 0){
+    missingSectionOpen = false;
+    missingToggleBtn.style.display = 'none';
+    missingListSection.style.display = 'none';
+  } else {
+    missingToggleBtn.style.display = 'flex';
+    document.getElementById('missingToggleCount').textContent =
+      missingRows.length + (missingRows.length === 1 ? ' artikl' : ' artiklů');
+    missingBody.innerHTML = missingRows.map(r => `<tr class="row-missing">
+        <td class="mono">${escapeHtml(r.input)}</td>
+        <td class="qty">${escapeHtml(r.qty)}</td>
+      </tr>`).join('');
+    missingListSection.style.display = missingSectionOpen ? 'block' : 'none';
+    document.getElementById('missingChevron').style.transform = missingSectionOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    document.getElementById('missingToggleText').textContent = missingSectionOpen ? 'Skrýt nenalezené artikly' : 'Zobrazit nenalezené artikly';
+  }
 }
+
+document.getElementById('missingToggleBtn').addEventListener('click', ()=>{
+  missingSectionOpen = !missingSectionOpen;
+  renderResults();
+});
 
 document.getElementById('searchBtn').addEventListener('click', runSearch);
 document.getElementById('sortByPos').addEventListener('change', renderResults);
