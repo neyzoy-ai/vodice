@@ -871,9 +871,13 @@ function normalizeSearchToken(s){
   return String(s==null?'':s).trim().toUpperCase().replace(',', '.');
 }
 
+// Text search covers everything EXCEPT průřez — that field has its own
+// exact numeric matcher below, so a plain digit like "4" doesn't also
+// substring-match unrelated things (SAP codes, position numbers, names
+// that happen to contain a "4").
 function buildSearchText(rec){
   if(rec.__searchText != null) return rec.__searchText;
-  const parts = [rec.sap, rec.pozice, rec.prurez, rec.barva, rec.nazev]
+  const parts = [rec.sap, rec.pozice, rec.barva, rec.nazev]
     .filter(v => v != null && v !== '')
     .map(v => String(v).toUpperCase());
   const text = parts.join(' ');
@@ -881,17 +885,40 @@ function buildSearchText(rec){
   return text;
 }
 
-function fuzzySearch(query){
-  const q = String(query || '').trim();
-  if(!q) return null;
-  const tokens = q.split(/\s+/).map(normalizeSearchToken).filter(Boolean);
-  if(tokens.length === 0) return null;
+function parsePrurez(v){
+  if(v == null || v === '') return null;
+  const n = parseFloat(String(v).trim().replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
 
-  let candidates = DB.filter(rec => {
-    const text = buildSearchText(rec);
-    return tokens.every(t => text.includes(t));
-  });
-  if(candidates.length === 0) return null;
+// A token is treated as a "průřez" token when it's purely numeric
+// (e.g. "4", "0.5", "2,5") — those are matched EXACTLY against the
+// record's Průřez field, not as a substring anywhere in the record.
+function isNumericToken(t){
+  return /^\d+(?:\.\d+)?$/.test(t);
+}
+
+function tokenMatches(rec, token){
+  if(isNumericToken(token)){
+    const rp = parsePrurez(rec.prurez);
+    return rp != null && Math.abs(rp - parseFloat(token)) < 1e-9;
+  }
+  return buildSearchText(rec).includes(token);
+}
+
+// Returns ALL records matching the query (every token must match —
+// numeric tokens exactly against Průřez, other tokens as substrings
+// of SAP/pozice/barva/název), sorted by pozice/SAP. A vague query like
+// just "0.5" therefore matches every color/variant with that exact
+// průřez, not unrelated records that merely contain "0.5" somewhere.
+function fuzzySearchAll(query){
+  const q = String(query || '').trim();
+  if(!q) return [];
+  const tokens = q.split(/\s+/).map(normalizeSearchToken).filter(Boolean);
+  if(tokens.length === 0) return [];
+
+  let candidates = DB.filter(rec => tokens.every(t => tokenMatches(rec, t)));
+  if(candidates.length === 0) return [];
 
   // Prefer records that actually have a pick position — that's what this
   // tool is for, so an entry without one is rarely the intended match.
@@ -905,7 +932,14 @@ function fuzzySearch(query){
     if(byPos) return byPos;
     return naturalCompare(a.sap, b.sap);
   });
-  return candidates[0];
+  return candidates;
+}
+
+// Back-compat helper: single best match (used nowhere critical anymore,
+// kept in case something still wants just one result).
+function fuzzySearch(query){
+  const all = fuzzySearchAll(query);
+  return all.length ? all[0] : null;
 }
 
 function escapeHtml(s){
@@ -930,10 +964,22 @@ function runSearch(){
     return;
   }
 
-  lastResults = items.map(it=>{
-    let rec = byCode.get(normCode(it.code));
-    if(!rec) rec = fuzzySearch(it.full);
-    return { input: it.full, qty: it.qty, rec };
+  lastResults = [];
+  items.forEach(it=>{
+    const exact = byCode.get(normCode(it.code));
+    if(exact){
+      lastResults.push({ input: it.full, qty: it.qty, rec: exact });
+      return;
+    }
+    // No exact SAP-code match — fall back to a text search. If the query
+    // is vague (e.g. just a průřez like "0.5"), this can match many
+    // records; show every one of them instead of picking just one.
+    const matches = fuzzySearchAll(it.full);
+    if(matches.length === 0){
+      lastResults.push({ input: it.full, qty: it.qty, rec: null });
+    } else {
+      matches.forEach(m => lastResults.push({ input: it.full, qty: it.qty, rec: m }));
+    }
   });
 
   renderResults();
