@@ -504,6 +504,7 @@ tbody tr:last-child td{ border-bottom:none; }
 tbody tr{ transition:background .1s ease; background:var(--tbl-row); }
 tbody tr:nth-child(even){ background:var(--tbl-row-alt); }
 tbody tr:hover{ background:var(--tbl-row-hover); box-shadow:inset 3px 0 0 var(--tbl-row-hover-edge); }
+tr.row-clickable{ cursor:pointer; }
 .mono{ font-family:'IBM Plex Mono',monospace; }
 .pos-badge{
   display:inline-flex;
@@ -1541,7 +1542,7 @@ function renderPrurezResults(value){
   document.getElementById('prurezSummary').innerHTML =
     `<span class="pill">Průřez ${escapeHtml(formatQty(value))} mm²: <b>${matches.length}</b> artiklů</span>`;
 
-  document.getElementById('prurezBody').innerHTML = matches.map(rec => `<tr>
+  document.getElementById('prurezBody').innerHTML = matches.map(rec => `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
       <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
@@ -1698,7 +1699,7 @@ function renderResults(){
 
   body.innerHTML = foundRows.map(r=>{
     const rec = r.rec;
-    return `<tr>
+    return `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
       <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
@@ -1842,7 +1843,7 @@ function renderDbList(){
 
   summary.innerHTML = `<span class="pill">Zobrazeno: <b>${list.length}</b> z <b>${DB.length}</b></span>`;
 
-  body.innerHTML = list.map(rec => `<tr>
+  body.innerHTML = list.map(rec => `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
     <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
     <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
     <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
@@ -1923,6 +1924,11 @@ document.addEventListener('click', (e)=>{
   const badge = e.target.closest('.artikl-badge[data-sap]');
   if(badge){
     openDetailModal(badge.dataset.sap);
+    return;
+  }
+  const row = e.target.closest('tr.row-clickable[data-sap]');
+  if(row){
+    openDetailModal(row.dataset.sap);
     return;
   }
   if(e.target === detailOverlay){
