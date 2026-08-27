@@ -572,7 +572,7 @@ footer{
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="dbListChevron" style="transition:transform .18s ease"><path d="m6 9 6 6 6-6"/></svg>
         Zobrazit celou databázi
       </button>
-      <span class="hint" id="uploadStatus">Nahraje se pozice.xlsx — použijí se všechny listy, sloučí se podle SAP čísla</span>
+      <span class="hint" id="uploadStatus"></span>
     </div>
     <div id="dbListSection" style="display:none; margin-top:18px;">
       <input type="text" id="dbListFilter" class="db-filter-input" placeholder="Filtrovat databázi (artikl, pozice, průřez, barva, název…)">
@@ -701,19 +701,8 @@ function loadDbFromStorage(){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  const restored = loadDbFromStorage();
-  let infoText = DB.length + ' artiklů v databázi';
-  if(restored){
-    try{
-      const meta = JSON.parse(localStorage.getItem(DB_STORAGE_META_KEY) || '{}');
-      if(meta.savedAt){
-        const d = new Date(meta.savedAt);
-        const stamp = d.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-        infoText += ' (uloženo z prohlížeče' + (meta.source ? ': ' + meta.source : '') + ', ' + stamp + ')';
-      }
-    } catch(e){ /* ignore meta parse errors */ }
-  }
-  document.getElementById('dbInfo').textContent = infoText;
+  loadDbFromStorage();
+  document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi';
 });
 
 function normCode(s){
