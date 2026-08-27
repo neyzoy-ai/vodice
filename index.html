@@ -1736,6 +1736,22 @@ function escapeHtml(s){
 
 let lastResults = [];
 
+// A pasted line counts as a "vodič/kabel" item if either the text the
+// user pasted, or the DB record it resolved to, mentions "vodič"/"vodic"
+// or "kabel" — everything else (Plexi, karton, etiketa, jistič,
+// montážní složka…) gets hidden from the results entirely, whether it
+// was matched in the DB or not.
+function isVodicOrKabelText(s){
+  if(s == null) return false;
+  const t = String(s).toUpperCase();
+  return t.includes('VODIC') || t.includes('VODIČ') || t.includes('KABEL');
+}
+
+function isVodicOrKabelRec(rec){
+  if(!rec) return false;
+  return isVodicOrKabelText(rec.nazev) || isVodicOrKabelText(rec.skupina_pouziti) || isVodicOrKabelText(rec.typ);
+}
+
 function runSearch(){
   const raw = document.getElementById('input').value;
   const items = aggregateItems(parseInput(raw));
@@ -1756,15 +1772,29 @@ function runSearch(){
   lastResults = [];
   items.forEach(it=>{
     const exact = byCode.get(normCode(it.code));
+    // No exact SAP-code match — fall back to a text search. If the query
+    // is vague (e.g. just a průřez like "0.5"), this can match many
+    // records; show every one of them instead of picking just one.
+    const matches = exact ? null : fuzzySearchAll(it.full);
+
+    // Decide whether this line is a vodič/kabel — based on the pasted
+    // text itself, or (if we found something) the matched record(s).
+    const inputIsWire = isVodicOrKabelText(it.full) || isVodicOrKabelText(it.code);
+    const recIsWire = exact
+      ? isVodicOrKabelRec(exact)
+      : (matches && matches.some(isVodicOrKabelRec));
+
+    if(!inputIsWire && !recIsWire){
+      // Not a vodič/kabel (karton, etiketa, jistič, plexi…) — hide it
+      // completely, whether it was found in the DB or not.
+      return;
+    }
+
     if(exact){
       lastResults.push({ input: it.full, qty: it.qty, rec: exact });
       return;
     }
-    // No exact SAP-code match — fall back to a text search. If the query
-    // is vague (e.g. just a průřez like "0.5"), this can match many
-    // records; show every one of them instead of picking just one.
-    const matches = fuzzySearchAll(it.full);
-    if(matches.length === 0){
+    if(!matches || matches.length === 0){
       lastResults.push({ input: it.full, qty: it.qty, rec: null });
     } else {
       matches.forEach(m => lastResults.push({ input: it.full, qty: it.qty, rec: m }));
@@ -1799,11 +1829,26 @@ function renderResults(){
   summary.innerHTML = `
     <span class="pill">Celkem položek: <b>${rows.length}</b></span>
     <span class="pill">Nalezeno: <b>${foundRows.length}</b></span>
-    <span class="pill ${missingRows.length?'warn':''}">Nenalezeno: <b>${missingRows.length}</b></span>
+    <span class="pill ${missingRows.length?'warn':''}">Chybí v databázi: <b>${missingRows.length}</b></span>
   `;
 
-  body.innerHTML = foundRows.map(r=>{
+  // Everything reaching this table is already a vodič/kabel (non-wire
+  // items were filtered out entirely in runSearch). Items that aren't in
+  // the database are still shown directly here — not tucked away behind
+  // a "show missing" toggle — just visually marked as missing.
+  body.innerHTML = rows.map(r=>{
     const rec = r.rec;
+    if(!rec){
+      return `<tr class="row-missing">
+        <td><span class="sub">bez pozice</span></td>
+        <td><span class="sub">NENALEZENO</span></td>
+        <td class="name">${escapeHtml(r.input)}</td>
+        <td class="sub"></td>
+        <td class="sub"></td>
+        <td class="qty">${escapeHtml(r.qty)}</td>
+        <td class="baleni-cell"></td>
+      </tr>`;
+    }
     return `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
       <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
@@ -1815,26 +1860,14 @@ function renderResults(){
     </tr>`;
   }).join('');
 
+  // The old "show/hide missing items" toggle section is no longer
+  // needed — missing wire/kabel rows now show directly in the main
+  // table above — so keep it hidden.
   const missingToggleBtn = document.getElementById('missingToggleBtn');
   const missingListSection = document.getElementById('missingListSection');
-  const missingBody = document.getElementById('missingBody');
-
-  if(missingRows.length === 0){
-    missingSectionOpen = false;
-    missingToggleBtn.style.display = 'none';
-    missingListSection.style.display = 'none';
-  } else {
-    missingToggleBtn.style.display = 'flex';
-    document.getElementById('missingToggleCount').textContent =
-      missingRows.length + (missingRows.length === 1 ? ' artikl' : ' artiklů');
-    missingBody.innerHTML = missingRows.map(r => `<tr class="row-missing">
-        <td class="mono">${escapeHtml(r.input)}</td>
-        <td class="qty">${escapeHtml(r.qty)}</td>
-      </tr>`).join('');
-    missingListSection.style.display = missingSectionOpen ? 'block' : 'none';
-    document.getElementById('missingChevron').style.transform = missingSectionOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-    document.getElementById('missingToggleText').textContent = missingSectionOpen ? 'Skrýt nenalezené artikly' : 'Zobrazit nenalezené artikly';
-  }
+  missingSectionOpen = false;
+  missingToggleBtn.style.display = 'none';
+  missingListSection.style.display = 'none';
 }
 
 document.getElementById('missingToggleBtn').addEventListener('click', ()=>{
