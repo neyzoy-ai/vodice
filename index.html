@@ -1047,6 +1047,33 @@ function parseInput(raw){
   return items;
 }
 
+// Sums quantities for repeated codes — if the same artikl code appears
+// several times in the pasted input (e.g. the whole list pasted twice,
+// or split across several separate blocks), its quantities are added
+// together into a single line instead of showing separate rows.
+function aggregateItems(items){
+  const order = [];
+  const map = new Map();
+  for(const it of items){
+    const key = normCode(it.code);
+    let entry = map.get(key);
+    if(!entry){
+      entry = { code: it.code, full: it.full, qtySum: 0, hasQty: false };
+      map.set(key, entry);
+      order.push(key);
+    }
+    const numeric = parseFloat(String(it.qty).replace(',', '.'));
+    if(!isNaN(numeric) && it.qty !== ''){
+      entry.qtySum += numeric;
+      entry.hasQty = true;
+    }
+  }
+  return order.map(key=>{
+    const e = map.get(key);
+    return { code: e.code, qty: e.hasQty ? formatQty(e.qtySum) : '', full: e.full };
+  });
+}
+
 // ---- Fallback search: matches by artikl (SAP), pozice, průřez, barva a název ----
 
 function normalizeSearchToken(s){
@@ -1132,7 +1159,7 @@ let lastResults = [];
 
 function runSearch(){
   const raw = document.getElementById('input').value;
-  const items = parseInput(raw);
+  const items = aggregateItems(parseInput(raw));
   const resultsPanel = document.getElementById('resultsPanel');
   const body = document.getElementById('resultsBody');
   const summary = document.getElementById('summary');
