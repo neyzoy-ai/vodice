@@ -288,6 +288,28 @@ input[type=checkbox]{ accent-color:var(--copper); width:15px; height:15px; curso
   background:var(--bg-2);
   box-shadow:inset 0 1px 3px rgba(0,0,0,0.25);
 }
+.db-list-frame{
+  overflow-y:auto;
+  max-height:480px;
+}
+.db-filter-input{
+  width:100%;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.88rem;
+  padding:11px 14px;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.3);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.db-filter-input:focus{
+  outline:none;
+  border-color:var(--copper);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.3), 0 0 0 3px var(--copper-soft);
+}
+.db-filter-input::placeholder{ color:var(--muted-dim); }
 table{
   width:100%;
   border-collapse:collapse;
@@ -546,7 +568,30 @@ footer{
         Aktualizovat databázi
       </button>
       <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+      <button type="button" class="btn-ghost" id="dbListToggleBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="dbListChevron" style="transition:transform .18s ease"><path d="m6 9 6 6 6-6"/></svg>
+        Zobrazit celou databázi
+      </button>
       <span class="hint" id="uploadStatus">Nahraje se pozice.xlsx — použijí se všechny listy, sloučí se podle SAP čísla</span>
+    </div>
+    <div id="dbListSection" style="display:none; margin-top:18px;">
+      <input type="text" id="dbListFilter" class="db-filter-input" placeholder="Filtrovat databázi (artikl, pozice, průřez, barva, název…)">
+      <div class="summary" id="dbListSummary" style="margin-top:12px"></div>
+      <div class="table-frame db-list-frame">
+        <table>
+          <thead>
+            <tr>
+              <th>Pozice</th>
+              <th>Artikl</th>
+              <th>Název</th>
+              <th>Barva</th>
+              <th>Průřez</th>
+              <th>Výrobce</th>
+            </tr>
+          </thead>
+          <tbody id="dbListBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -784,6 +829,7 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
       statusEl.textContent = 'Nahráno ' + wb.SheetNames.length + ' listů, ' + DB.length + ' artiklů celkem.';
       // re-run search with new data if there's something in the input
       if(document.getElementById('input').value.trim()) runSearch();
+      if(dbListOpen) renderDbList();
     } catch(err){
       statusEl.textContent = 'Chyba při čtení souboru: ' + err.message;
     }
@@ -1098,6 +1144,70 @@ document.getElementById('excelBtn').addEventListener('click', ()=>{
   const stamp = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
   XLSX.writeFile(wb, `pozice_vyber_${stamp}.xlsx`);
 });
+
+// ---- Full database browser: collapsible, filtered, sorted by pozice ----
+// Order: items WITH a pozice first (KV-01-01, KV-01-02, ... in natural
+// order), then items without a pozice at the end.
+
+let dbListOpen = false;
+let dbListRendered = false;
+
+function getSortedDbList(){
+  const list = DB.filter(rec => rec && rec.sap);
+  list.sort((a, b) => {
+    const pa = a.pozice, pb = b.pozice;
+    if(pa && !pb) return -1;
+    if(!pa && pb) return 1;
+    if(pa && pb){
+      const byPos = naturalCompare(pa, pb);
+      if(byPos) return byPos;
+    }
+    return naturalCompare(a.sap, b.sap);
+  });
+  return list;
+}
+
+function renderDbList(){
+  const filterEl = document.getElementById('dbListFilter');
+  const body = document.getElementById('dbListBody');
+  const summary = document.getElementById('dbListSummary');
+  const q = filterEl.value.trim();
+
+  let list = getSortedDbList();
+  if(q){
+    const tokens = q.split(/\s+/).map(normalizeSearchToken).filter(Boolean);
+    if(tokens.length){
+      list = list.filter(rec => tokens.every(t => tokenMatches(rec, t)));
+    }
+  }
+
+  summary.innerHTML = `<span class="pill">Zobrazeno: <b>${list.length}</b> z <b>${DB.length}</b></span>`;
+
+  body.innerHTML = list.map(rec => `<tr>
+    <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
+    <td><span class="artikl-badge">${escapeHtml(rec.sap)}</span></td>
+    <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
+    <td class="sub">${escapeHtml(rec.barva || '')}</td>
+    <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
+    <td class="sub">${escapeHtml(rec.vyrobce || '')}</td>
+  </tr>`).join('');
+
+  dbListRendered = true;
+}
+
+function setDbListOpen(open){
+  dbListOpen = open;
+  document.getElementById('dbListSection').style.display = open ? 'block' : 'none';
+  document.getElementById('dbListChevron').style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+  const btn = document.getElementById('dbListToggleBtn');
+  btn.lastChild.textContent = open ? 'Skrýt databázi' : 'Zobrazit celou databázi';
+  if(open && !dbListRendered) renderDbList();
+}
+
+document.getElementById('dbListToggleBtn').addEventListener('click', ()=>{
+  setDbListOpen(!dbListOpen);
+});
+document.getElementById('dbListFilter').addEventListener('input', renderDbList);
 </script>
 </body>
 </html>
