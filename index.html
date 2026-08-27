@@ -584,6 +584,74 @@ thead th.col-center{ text-align:center; }
   letter-spacing:.04em;
 }
 
+/* ---- Balení chip: small far-right indicator (Krabička / SUD) ---- */
+.baleni-cell{ text-align:center; white-space:nowrap; }
+.baleni-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:0.68rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  padding:2.5px 8px;
+  border-radius:100px;
+  white-space:nowrap;
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  color:var(--muted);
+}
+.baleni-chip svg{ flex:none; width:10px; height:10px; }
+.baleni-chip.is-sud{
+  color:#8fb4e8;
+  background:rgba(94,140,217,0.14);
+  border-color:rgba(94,140,217,0.38);
+}
+.baleni-chip.is-krabicka{
+  color:#e8c968;
+  background:rgba(212,177,63,0.14);
+  border-color:rgba(212,177,63,0.4);
+}
+.baleni-chip.is-unknown{ opacity:0.45; }
+
+.baleni-filter-pills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:14px;
+}
+.baleni-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+  font-size:0.8rem;
+  padding:6px 14px;
+  border-radius:100px;
+  border:1px solid var(--line);
+  background:linear-gradient(155deg, var(--panel-3), var(--panel-2));
+  color:var(--text);
+  cursor:pointer;
+  transition:border-color .12s ease, color .12s ease, background .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.baleni-pill svg{ flex:none; width:12px; height:12px; }
+.baleni-pill:hover{ transform:translateY(-1px); }
+.baleni-pill[data-baleni="SUD"]:hover{ border-color:#5e8cd9; color:#8fb4e8; }
+.baleni-pill[data-baleni="Krabička"]:hover{ border-color:var(--earth-yellow); color:#e8c968; }
+.baleni-pill.active[data-baleni="SUD"]{
+  background:linear-gradient(155deg, #7ba3e8, #5e8cd9);
+  color:#0d1a2f;
+  border-color:transparent;
+  box-shadow:0 4px 14px -4px rgba(94,140,217,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.baleni-pill.active[data-baleni="Krabička"]{
+  background:linear-gradient(155deg, #e8c968, var(--earth-yellow));
+  color:#231b06;
+  border-color:transparent;
+  box-shadow:0 4px 14px -4px rgba(212,177,63,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
 .empty{
   text-align:center;
   color:var(--muted);
@@ -899,6 +967,7 @@ footer{
     </button>
 
     <div id="dbListSection" style="display:none; margin-top:18px;">
+      <div class="baleni-filter-pills" id="dbBaleniPills"></div>
       <input type="text" id="dbListFilter" class="db-filter-input" placeholder="Filtrovat databázi (artikl, pozice, průřez, barva, název…)">
       <div class="summary" id="dbListSummary" style="margin-top:12px"></div>
       <div class="table-frame db-list-frame">
@@ -911,6 +980,7 @@ footer{
               <th>Barva</th>
               <th>Průřez</th>
               <th>Výrobce</th>
+              <th class="col-center">Balení</th>
             </tr>
           </thead>
           <tbody id="dbListBody"></tbody>
@@ -969,6 +1039,7 @@ footer{
                 <th>Název</th>
                 <th>Barva</th>
                 <th>Výrobce</th>
+                <th class="col-center">Balení</th>
               </tr>
             </thead>
             <tbody id="prurezBody"></tbody>
@@ -1015,6 +1086,7 @@ footer{
             <th>Barva</th>
             <th>Průřez</th>
             <th class="col-center">Množství</th>
+            <th class="col-center">Balení</th>
           </tr>
         </thead>
         <tbody id="resultsBody"></tbody>
@@ -1110,6 +1182,7 @@ function buildColMap(headerRow){
   headerRow.forEach((cell, idx)=>{
     const h = normHeader(cell);
     if(!h) return;
+    const hCompact = h.replace(/\s+/g,'');
     if(map.sap === undefined && h.startsWith('sap')) map.sap = idx;
     else if(map.skupina_typ === undefined && h.includes('skupina') && h.includes('typu')) map.skupina_typ = idx;
     else if(map.skupina_pouziti === undefined && h.includes('skupina') && h.includes('užit')) map.skupina_pouziti = idx;
@@ -1120,8 +1193,33 @@ function buildColMap(headerRow){
     else if(map.vyrobce === undefined && h.includes('výrobce')) map.vyrobce = idx;
     else if(map.objc === undefined && h.includes('obj')) map.objc = idx;
     else if(map.nazev === undefined && h === 'název') map.nazev = idx;
+    // Balení column (krabička / sud). On some sheets Excel auto-names
+    // this "Sloupec7"; on others it's named directly "Balení" — accept
+    // either.
+    else if(map.baleni === undefined && (hCompact === 'sloupec7' || h.includes('balen'))) map.baleni = idx;
   });
   return map;
+}
+
+function normBaleni(v){
+  if(v == null) return null;
+  const s = String(v).trim();
+  if(s === '') return null;
+  const up = s.toUpperCase();
+  if(up === 'SUD') return 'SUD';
+  if(up.startsWith('KRAB')) return 'Krabička';
+  return s;
+}
+
+const ICON_SUD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10l1 16H6L7 4z"/><path d="M6.4 9h11.2"/><path d="M6.7 15h10.6"/></svg>';
+const ICON_KRABICKA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8 12 4l9 4-9 4-9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>';
+
+function baleniChipHtml(rawBaleni){
+  const val = normBaleni(rawBaleni);
+  if(!val) return '<span class="baleni-chip is-unknown">—</span>';
+  if(val === 'SUD') return `<span class="baleni-chip is-sud">${ICON_SUD}SUD</span>`;
+  if(val === 'Krabička') return `<span class="baleni-chip is-krabicka">${ICON_KRABICKA}Krab.</span>`;
+  return `<span class="baleni-chip">${escapeHtml(val)}</span>`;
 }
 
 function extractSheetRecords(rows){
@@ -1159,6 +1257,7 @@ function extractSheetRecords(rows){
       vyrobce: colMap.vyrobce !== undefined ? (row[colMap.vyrobce] ?? null) : null,
       objc: colMap.objc !== undefined ? (row[colMap.objc] ?? null) : null,
       nazev: colMap.nazev !== undefined ? (row[colMap.nazev] ?? null) : null,
+      baleni: colMap.baleni !== undefined ? normBaleni(row[colMap.baleni]) : null,
     });
   }
   return records;
@@ -1176,7 +1275,7 @@ function mergeRecordLists(lists){
         merged.set(key, Object.assign({}, rec));
         continue;
       }
-      for(const field of ['skupina_typ','skupina_pouziti','typ','prurez','barva','vyrobce','objc','nazev']){
+      for(const field of ['skupina_typ','skupina_pouziti','typ','prurez','barva','vyrobce','objc','nazev','baleni']){
         if((existing[field] == null || existing[field] === '') && rec[field] != null && rec[field] !== ''){
           existing[field] = rec[field];
         }
@@ -1386,7 +1485,7 @@ function normalizeSearchToken(s){
 // that happen to contain a "4").
 function buildSearchText(rec){
   if(rec.__searchText != null) return rec.__searchText;
-  const parts = [rec.sap, rec.pozice, rec.barva, rec.nazev]
+  const parts = [rec.sap, rec.pozice, rec.barva, rec.nazev, rec.baleni]
     .filter(v => v != null && v !== '')
     .map(v => String(v).toUpperCase());
   const text = parts.join(' ');
@@ -1448,6 +1547,7 @@ function renderPrurezResults(value){
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
       <td class="sub">${escapeHtml(rec.barva || '')}</td>
       <td class="sub">${escapeHtml(rec.vyrobce || '')}</td>
+      <td class="baleni-cell">${baleniChipHtml(rec.baleni)}</td>
     </tr>`).join('');
 
   document.getElementById('prurezResults').style.display = 'block';
@@ -1605,6 +1705,7 @@ function renderResults(){
       <td class="sub">${escapeHtml(rec.barva || '')}</td>
       <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
       <td class="qty">${escapeHtml(r.qty)}</td>
+      <td class="baleni-cell">${baleniChipHtml(rec.baleni)}</td>
     </tr>`;
   }).join('');
 
