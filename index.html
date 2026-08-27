@@ -262,6 +262,80 @@ button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:2px
   margin-left:auto;
 }
 
+/* ---- Databáze artiklů panel: upload row + accordion toggle ---- */
+.db-upload-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.db-upload-icon{
+  flex:none;
+  width:44px;
+  height:44px;
+  border-radius:11px;
+  background:linear-gradient(155deg, var(--panel-3), var(--panel-2));
+  border:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--copper-bright);
+  box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.db-upload-text{ flex:1 1 220px; min-width:200px; }
+.db-upload-text .title{ font-weight:600; font-size:0.94rem; color:var(--text); }
+.db-upload-text .desc{ font-size:0.8rem; color:var(--muted); margin-top:3px; line-height:1.45; }
+.db-upload-row .btn-primary{ flex:none; }
+
+.db-upload-status{
+  font-size:0.8rem;
+  color:var(--muted);
+  margin-top:12px;
+  padding:9px 13px;
+  border-radius:var(--radius-sm);
+  background:var(--panel-2);
+  border:1px solid var(--line-soft);
+  border-left:3px solid var(--muted-dim);
+  line-height:1.5;
+}
+.db-upload-status:empty{ display:none; padding:0; margin:0; border:none; }
+.db-upload-status.is-error{ color:var(--danger); border-left-color:var(--danger); background:var(--danger-soft); }
+.db-upload-status.is-success{ color:var(--ok); border-left-color:var(--ok); }
+
+.db-divider{
+  height:1px;
+  background:linear-gradient(90deg, transparent, var(--line-soft) 12%, var(--line-soft) 88%, transparent);
+  margin:20px 0;
+  border:none;
+}
+
+.db-list-toggle{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:13px 16px;
+  color:var(--text);
+}
+.db-list-toggle:hover{ border-color:var(--copper); color:var(--copper-bright); background:var(--panel-3); }
+.db-list-toggle-label{ display:flex; align-items:center; gap:10px; }
+.db-list-toggle-label svg{ flex:none; color:var(--muted); }
+.db-list-toggle:hover .db-list-toggle-label svg{ color:var(--copper-bright); }
+.db-list-toggle-right{ display:flex; align-items:center; gap:12px; }
+.db-list-toggle-count{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.74rem;
+  color:var(--muted);
+  background:var(--panel-3);
+  border:1px solid var(--line);
+  padding:3px 10px;
+  border-radius:100px;
+  white-space:nowrap;
+}
+
 .sort-row{
   display:flex;
   align-items:center;
@@ -562,18 +636,36 @@ footer{
 
   <div class="panel accent-copper">
     <h2>Databáze artiklů</h2>
-    <div class="controls" style="margin-top:0">
+
+    <div class="db-upload-row">
+      <div class="db-upload-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2h-3a1 1 0 0 0-.78.375L13.62 14A2 2 0 0 1 12 15h0a2 2 0 0 1-1.62-1.625L9.78 12.375A1 1 0 0 0 9 12H6a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2z"/></svg>
+      </div>
+      <div class="db-upload-text">
+        <div class="title">Nahrát novou databázi</div>
+        <div class="desc">Vybere se Excel s pozicemi vodičů — nahradí aktuální data a zůstanou uložená v tomto prohlížeči i po zavření stránky.</div>
+      </div>
       <button type="button" class="btn-primary" id="updateDbBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-        Aktualizovat databázi
+        Nahrát Excel
       </button>
       <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
-      <button type="button" class="btn-ghost" id="dbListToggleBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="dbListChevron" style="transition:transform .18s ease"><path d="m6 9 6 6 6-6"/></svg>
-        Zobrazit celou databázi
-      </button>
-      <span class="hint" id="uploadStatus"></span>
     </div>
+    <div class="db-upload-status" id="uploadStatus"></div>
+
+    <div class="db-divider"></div>
+
+    <button type="button" class="db-list-toggle" id="dbListToggleBtn">
+      <span class="db-list-toggle-label">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <span id="dbListToggleText">Zobrazit celou databázi</span>
+      </span>
+      <span class="db-list-toggle-right">
+        <span class="db-list-toggle-count" id="dbListToggleCount"></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" id="dbListChevron" style="transition:transform .18s ease"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+    </button>
+
     <div id="dbListSection" style="display:none; margin-top:18px;">
       <input type="text" id="dbListFilter" class="db-filter-input" placeholder="Filtrovat databázi (artikl, pozice, průřez, barva, název…)">
       <div class="summary" id="dbListSummary" style="margin-top:12px"></div>
@@ -703,6 +795,7 @@ function loadDbFromStorage(){
 document.addEventListener('DOMContentLoaded', ()=>{
   loadDbFromStorage();
   document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi';
+  updateDbListToggleCount();
 });
 
 function normCode(s){
@@ -842,6 +935,7 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
   const file = e.target.files && e.target.files[0];
   if(!file) return;
   const statusEl = document.getElementById('uploadStatus');
+  statusEl.className = 'db-upload-status';
   statusEl.textContent = 'Načítám soubor…';
 
   const reader = new FileReader();
@@ -856,6 +950,7 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
       });
       const merged = mergeRecordLists(perSheetRecords);
       if(merged.length === 0){
+        statusEl.className = 'db-upload-status is-error';
         statusEl.textContent = 'V souboru se nepodařilo najít sloupec SAP č. — zkontroluj formát.';
         return;
       }
@@ -863,12 +958,15 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
       byCode = new Map(DB.map(d=>[normCode(d.sap), d]));
       const saved = saveDbToStorage(file.name);
       document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi (nahráno: ' + file.name + ')';
+      updateDbListToggleCount();
+      statusEl.className = 'db-upload-status ' + (saved ? 'is-success' : 'is-error');
       statusEl.textContent = 'Nahráno ' + wb.SheetNames.length + ' listů, ' + DB.length + ' artiklů celkem.'
         + (saved ? ' Uloženo do prohlížeče — zůstane i po zavření stránky.' : ' POZOR: uložení do prohlížeče selhalo, po zavření stránky se data ztratí!');
       // re-run search with new data if there's something in the input
       if(document.getElementById('input').value.trim()) runSearch();
       if(dbListOpen) renderDbList();
     } catch(err){
+      statusEl.className = 'db-upload-status is-error';
       statusEl.textContent = 'Chyba při čtení souboru: ' + err.message;
     }
   };
@@ -1233,12 +1331,16 @@ function renderDbList(){
   dbListRendered = true;
 }
 
+function updateDbListToggleCount(){
+  const el = document.getElementById('dbListToggleCount');
+  if(el) el.textContent = DB.filter(rec => rec && rec.sap).length + ' artiklů';
+}
+
 function setDbListOpen(open){
   dbListOpen = open;
   document.getElementById('dbListSection').style.display = open ? 'block' : 'none';
   document.getElementById('dbListChevron').style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
-  const btn = document.getElementById('dbListToggleBtn');
-  btn.lastChild.textContent = open ? 'Skrýt databázi' : 'Zobrazit celou databázi';
+  document.getElementById('dbListToggleText').textContent = open ? 'Skrýt databázi' : 'Zobrazit celou databázi';
   if(open && !dbListRendered) renderDbList();
 }
 
