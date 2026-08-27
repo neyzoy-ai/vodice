@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Vyhledávač pozic vodičů</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --bg:#14161a;
+  --bg-2:#0f1113;
+  --panel:#1b1e23;
+  --panel-2:#22262c;
+  --panel-3:#282c33;
+  --line:#31363d;
+  --line-soft:#292d33;
+  --text:#eef0f2;
+  --muted:#9aa3ad;
+  --muted-dim:#6c757f;
+  --copper:#d97a3f;
+  --copper-bright:#f2a05e;
+  --copper-soft:rgba(217,122,63,0.14);
+  --earth-green:#4c9a5b;
+  --earth-yellow:#d4b13f;
+  --danger:#e0716f;
+  --danger-soft:rgba(224,113,111,0.12);
+  --ok:#5fb37c;
+  --radius:12px;
+  --radius-sm:8px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.24);
+  --shadow-md:0 8px 24px -8px rgba(0,0,0,0.45);
+  --shadow-glow:0 0 0 1px rgba(217,122,63,0.08), 0 8px 28px -10px rgba(217,122,63,0.18);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1200px 560px at 10% -10%, rgba(217,122,63,0.10), transparent 58%),
+    radial-gradient(900px 480px at 102% 0%, rgba(76,154,91,0.07), transparent 55%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 44px),
+    var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{ background:var(--copper); color:#1a1310; }
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--panel-3); border-radius:100px; border:2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover{ background:var(--line); }
+
+.wrap{
+  max-width:1120px;
+  margin:0 auto;
+  padding:36px 22px 64px;
+}
+
+/* signature earth-wire stripe — reads as a physical twisted-pair cable inset into the page */
+.stripe{
+  position:relative;
+  height:7px;
+  width:100%;
+  background:repeating-linear-gradient(
+    -45deg,
+    var(--earth-green) 0 11px,
+    var(--earth-yellow) 11px 22px
+  );
+  border-radius:100px;
+  margin-bottom:34px;
+  box-shadow:0 3px 12px -2px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.22), inset 0 -2px 2px rgba(0,0,0,0.3);
+}
+
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-bottom:32px;
+}
+.title-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.logo-mark{
+  flex:none;
+  width:46px;
+  height:46px;
+  border-radius:13px;
+  background:linear-gradient(155deg, var(--panel-3), var(--panel-2));
+  border:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+.logo-mark svg{ display:block; }
+h1{
+  font-size:1.68rem;
+  font-weight:800;
+  margin:0;
+  letter-spacing:-0.02em;
+  line-height:1.1;
+}
+h1 .accent{ color:var(--copper-bright); font-weight:700; }
+.meta{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.76rem;
+  color:var(--muted);
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  padding:7px 14px;
+  border-radius:100px;
+  box-shadow:var(--shadow-sm);
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+}
+.meta::before{
+  content:'';
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--ok);
+  box-shadow:0 0 0 3px rgba(95,179,124,0.18);
+  flex:none;
+}
+
+.panel{
+  background:linear-gradient(180deg, var(--panel), var(--panel) 60%, var(--panel-2));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px 24px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.025);
+  position:relative;
+  animation:panel-in .35s ease both;
+}
+.panel:nth-of-type(2){ animation-delay:.03s; }
+.panel:nth-of-type(3){ animation-delay:.06s; }
+@keyframes panel-in{
+  from{ opacity:0; transform:translateY(6px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .panel{ animation:none; }
+}
+.panel h2{
+  font-size:0.76rem;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  color:var(--muted);
+  margin:0 0 14px 0;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel h2::before{
+  content:'';
+  width:3px;
+  height:12px;
+  border-radius:2px;
+  background:linear-gradient(180deg, var(--copper-bright), var(--copper));
+  display:inline-block;
+}
+
+textarea{
+  width:100%;
+  min-height:120px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.92rem;
+  padding:14px 16px;
+  resize:vertical;
+  line-height:1.6;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.3);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+textarea:focus{
+  outline:none;
+  border-color:var(--copper);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,0.3), 0 0 0 3px var(--copper-soft);
+}
+textarea::placeholder{ color:var(--muted-dim); }
+
+.controls{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+button{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-weight:600;
+  font-size:0.88rem;
+  border-radius:var(--radius-sm);
+  border:1px solid transparent;
+  padding:10px 20px;
+  cursor:pointer;
+  transition:filter .12s ease, transform .05s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease, background .15s ease;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+button:active{ transform:translateY(1px); }
+button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:2px; }
+.btn-primary{
+  background:linear-gradient(155deg, var(--copper-bright), var(--copper));
+  color:#20140a;
+  box-shadow:0 4px 14px -4px rgba(217,122,63,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.btn-primary:hover{ filter:brightness(1.08); box-shadow:0 6px 18px -4px rgba(217,122,63,0.55), inset 0 1px 0 rgba(255,255,255,0.2); }
+.btn-ghost{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  color:var(--text);
+}
+.btn-ghost:hover{ border-color:var(--copper); color:var(--copper-bright); background:var(--panel-3); }
+.hint{
+  color:var(--muted-dim);
+  font-size:0.8rem;
+  margin-left:auto;
+}
+
+.sort-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.sort-row label{
+  font-size:0.82rem;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:7px;
+  cursor:pointer;
+  user-select:none;
+}
+input[type=checkbox]{ accent-color:var(--copper); width:15px; height:15px; cursor:pointer; }
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:0.88rem;
+}
+thead th{
+  text-align:left;
+  font-size:0.71rem;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  color:var(--muted);
+  border-bottom:1px solid var(--line);
+  padding:10px 12px;
+  font-weight:600;
+  white-space:nowrap;
+  position:sticky;
+  top:0;
+  background:var(--panel);
+  z-index:1;
+}
+tbody td{
+  padding:11px 12px;
+  border-bottom:1px solid var(--line-soft);
+  vertical-align:top;
+}
+tbody tr{ transition:background .1s ease; }
+tbody tr:nth-child(even){ background:rgba(255,255,255,0.012); }
+tbody tr:hover{ background:var(--panel-3); }
+.mono{ font-family:'IBM Plex Mono',monospace; }
+.pos-badge{
+  display:inline-block;
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+  background:var(--copper-soft);
+  color:var(--copper-bright);
+  border:1px solid rgba(217,122,63,0.35);
+  padding:3px 10px;
+  border-radius:100px;
+  white-space:nowrap;
+  font-size:0.82rem;
+}
+.qty{
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+}
+.name{ color:var(--text); font-weight:500; }
+.sub{ color:var(--muted); font-size:0.78rem; margin-top:3px; }
+.row-missing td{ color:var(--danger); }
+.row-missing .pos-badge{
+  background:var(--danger-soft);
+  color:var(--danger);
+  border-color:rgba(224,113,111,0.32);
+}
+.tag-missing{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.72rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:40px 10px;
+  font-size:0.9rem;
+}
+.empty b{ color:var(--text); }
+
+.summary{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+  font-size:0.82rem;
+}
+.summary .pill{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  padding:7px 14px;
+  border-radius:100px;
+  color:var(--muted);
+  box-shadow:var(--shadow-sm);
+}
+.summary .pill b{ color:var(--text); }
+.summary .pill.warn{ border-color:rgba(224,113,111,0.35); background:var(--danger-soft); }
+.summary .pill.warn b{ color:var(--danger); }
+
+footer{
+  color:var(--muted-dim);
+  font-size:0.76rem;
+  text-align:center;
+  margin-top:36px;
+  padding-top:20px;
+  border-top:1px solid var(--line-soft);
+}
+
+@media (max-width:640px){
+  .wrap{ padding:22px 14px 44px; }
+  thead th:nth-child(4), tbody td:nth-child(4){ display:none; }
+  h1{ font-size:1.32rem; }
+}
+
+/* password modal */
+.modal-overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(10,11,13,0.62);
+  backdrop-filter:blur(3px);
+  align-items:center;
+  justify-content:center;
+  z-index:50;
+  padding:20px;
+  animation:overlay-in .15s ease both;
+}
+.modal-overlay.open{ display:flex; }
+@keyframes overlay-in{ from{ opacity:0; } to{ opacity:1; } }
+.modal-box{
+  width:100%;
+  max-width:340px;
+  background:linear-gradient(180deg, var(--panel-2), var(--panel));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:26px 26px 22px;
+  box-shadow:0 20px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02);
+  text-align:center;
+  animation:modal-in .18s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes modal-in{
+  from{ opacity:0; transform:translateY(8px) scale(.98); }
+  to{ opacity:1; transform:translateY(0) scale(1); }
+}
+.modal-icon{
+  width:42px;
+  height:42px;
+  margin:0 auto 14px;
+  border-radius:12px;
+  background:var(--copper-soft);
+  color:var(--copper-bright);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(217,122,63,0.3);
+}
+.modal-box h3{
+  margin:0 0 6px;
+  font-size:1.02rem;
+  font-weight:700;
+  letter-spacing:-0.01em;
+}
+.modal-box p{
+  margin:0 0 16px;
+  color:var(--muted);
+  font-size:0.85rem;
+}
+.pw-input{
+  width:100%;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  color:var(--text);
+  font-family:'IBM Plex Mono',monospace;
+  font-size:1rem;
+  letter-spacing:0.12em;
+  text-align:center;
+  padding:11px 14px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.pw-input:focus{
+  outline:none;
+  border-color:var(--copper);
+  box-shadow:0 0 0 3px var(--copper-soft);
+}
+.pw-input.shake{ animation:pw-shake .32s ease; border-color:var(--danger); }
+@keyframes pw-shake{
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-6px); }
+  40%{ transform:translateX(5px); }
+  60%{ transform:translateX(-4px); }
+  80%{ transform:translateX(3px); }
+}
+.modal-error{
+  display:none;
+  color:var(--danger);
+  font-size:0.78rem;
+  margin-top:9px;
+}
+.modal-error.show{ display:block; }
+.modal-actions{
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+}
+.modal-actions button{ flex:1; justify-content:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stripe"></div>
+  <header>
+    <div class="title-row">
+      <div class="logo-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9.5" stroke="#4c9a5b" stroke-width="1.6"/>
+          <circle cx="12" cy="12" r="5.5" stroke="#d4b13f" stroke-width="1.6"/>
+          <circle cx="12" cy="12" r="1.8" fill="#f2a05e"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Vyhledávač pozic <span class="accent">vodičů</span></h1>
+      </div>
+    </div>
+    <div class="meta" id="dbInfo">načítám databázi…</div>
+  </header>
+
+  <div class="panel">
+    <h2>Databáze artiklů</h2>
+    <div class="controls" style="margin-top:0">
+      <button type="button" class="btn-primary" id="updateDbBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Aktualizovat databázi
+      </button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+      <span class="hint" id="uploadStatus">Nahraje se pozice.xlsx — použijí se všechny listy, sloučí se podle SAP čísla</span>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pwOverlay">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h3>Ověření přístupu</h3>
+      <p>Pro aktualizaci databáze zadej heslo.</p>
+      <input type="password" id="pwInput" class="pw-input" placeholder="Heslo" autocomplete="off">
+      <div class="modal-error" id="pwError">Nesprávné heslo, zkus to znovu.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="pwCancel">Zrušit</button>
+        <button type="button" class="btn-primary" id="pwConfirm">Potvrdit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Vstup — seznam artiklů</h2>
+    <textarea id="input"></textarea>
+    <div class="controls">
+      <button class="btn-primary" id="searchBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Vyhledat
+      </button>
+      <button class="btn-ghost" id="clearBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0-.9 13.1a2 2 0 0 1-2 1.9H7.9a2 2 0 0 1-2-1.9L5 6"/></svg>
+        Vymazat
+      </button>
+      <button class="btn-ghost" id="copyBtn" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span id="copyBtnLabel">Kopírovat výsledek</span>
+      </button>
+      <button class="btn-primary" id="excelBtn" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>
+        Stáhnout Excel
+      </button>
+      <span class="hint">Enter+Ctrl pro rychlé vyhledání</span>
+    </div>
+  </div>
+
+  <div id="resultsPanel" class="panel" style="display:none">
+    <h2>Výsledky</h2>
+    <div class="summary" id="summary"></div>
+    <div class="sort-row">
+      <label><input type="checkbox" id="sortByPos"> Seřadit podle pozice (trasa pro výběr)</label>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Pozice</th>
+            <th>Artikl</th>
+            <th>Název / skupina</th>
+            <th>Typ · průřez · barva</th>
+            <th>Množství</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Zdroj dat: List1 nahraného souboru pozice.xlsx · sloupce SAP č., Skupina dle použití, pozice</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let DB = [{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"RD","vyrobce":"LAPP","objc":4160504,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 RD","pozice":null,"sap":"10732931"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"RD","vyrobce":"LAPP","objc":4520044,"nazev":"Vodic H07V-K 6 RD","pozice":null,"sap":"10788385"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"DBU","vyrobce":"HEIRU","objc":"CYA 2,5 TM","nazev":"Vodic H07V-K (CYA) 2.5 DBU","pozice":null,"sap":"1816-7270"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":"6","barva":"WHOG","vyrobce":"LAPP","objc":"4160785","nazev":"Vodic_Multi-Standard SC 2.1 6 WHOG","pozice":null,"sap":"1819-8074"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1015","prurez":"1","barva":"VT","vyrobce":"HELUKABEL","objc":"60407","nazev":"Vodic UL-Style 1015 1 (AWG18)  VT","pozice":null,"sap":"1818-9085"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"OG","vyrobce":"LAPP","objc":4510092,"nazev":"Vodic H05V-K 0.75 OG","pozice":null,"sap":"10825394"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"1.5","barva":"GNYE","vyrobce":"HELUKABEL","objc":"64124","nazev":"Vodic FIVENORM H07V2-K 1.5 (AWG16) GNYE","pozice":null,"sap":"1819-3237"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":4,"barva":"BK","vyrobce":"LAPP","objc":"4520013E","nazev":"Vodic H07V-K 4 BK","pozice":null,"sap":"U00000058"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":1,"barva":"PK","vyrobce":"LAPP","objc":4510083,"nazev":"Vodic H05V-K 1 PK","pozice":"PH-05-03","sap":"1818-4749"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.5,"barva":"RD","vyrobce":"LAPP","objc":"4511071K","nazev":"Vodic H05V-K EMBOSS 0.5 RD","pozice":"PH-07-01","sap":"10512374"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1015","prurez":"0.5","barva":"DBU","vyrobce":"HELUKABEL","objc":60315,"nazev":"Vodic UL-Style 1015 0.5 (AWG20)  DBU","pozice":null,"sap":"1819-3231"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"GY","vyrobce":"LAPP","objc":4160106,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 GY","pozice":null,"sap":"10559211"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"LBU","vyrobce":"HELUKABEL","objc":26439,"nazev":"Vodic flex LiYv  0.5 BU","pozice":null,"sap":"1817-9651"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"OG","vyrobce":"LAPP","objc":4160209,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 OG","pozice":null,"sap":"U18533368"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":6,"barva":"BUWH","vyrobce":"HELUKABEL","objc":29389,"nazev":"Vodic 07V-K 6 BUWH","pozice":null,"sap":"1817-2033"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":4,"barva":"BK","vyrobce":"LAPP","objc":4520013,"nazev":"Vodic H07V-K 4 BK","pozice":null,"sap":"1817-0733"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":1.5,"barva":"DBU","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 1,5 DBU","nazev":"Vodic H07V-K EMBOSS 1.5 DBU","pozice":null,"sap":"U00000200"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"BN","vyrobce":"LAPP","objc":4160303,"nazev":"Vodic_Multi-Standard SC 2.1 1 BN","pozice":null,"sap":"10841517"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.75,"barva":"DBUWH","vyrobce":"LAPP","objc":"4512922S","nazev":"Vodic X05V-K 2CHELIX 0.75 DBUWH","pozice":"KV-06-3","sap":"1817-2185"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"YE","vyrobce":"LAPP","objc":4510112,"nazev":"Vodic H05V-K 0.75 YE","pozice":null,"sap":"1817-3771"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"DBU","vyrobce":"LAPP","objc":4510141,"nazev":"Vodic H05V-K 0.5 DBU","pozice":null,"sap":"1800-2200"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"RD","vyrobce":"LAPP","objc":4160104,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 RD","pozice":null,"sap":"1816-2385"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"OG","vyrobce":"LAPP","objc":4510093,"nazev":"Vodic H05V-K 1 OG","pozice":null,"sap":"U18001926"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"GNYE","vyrobce":"LAPP","objc":"4160500K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 2.5 GNYE","pozice":null,"sap":"U18132500"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":35,"barva":"BK","vyrobce":"LAPP","objc":4161101,"nazev":"Vodic_Multi-Standard SC 2.1 35 BK","pozice":null,"sap":"10732974"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"UL-Style 1015","prurez":4,"barva":"WHRD","vyrobce":"VOLLAND","objc":"0105850946","nazev":"Vodic UL-Style 1015 4 (AWG12) WHRD","pozice":null,"sap":"10842443"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1007_stroj+R","typ":"UL-Style 1007, CSA TR 64","prurez":0.35,"barva":"BN","vyrobce":"HELUKABEL","objc":62103,"nazev":"Vodic UL-Style 1007 0.34 (AWG22)  BN","pozice":null,"sap":"10921399"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":25,"barva":"BK","vyrobce":"LAPP","objc":4521011,"nazev":"Vodic H07V-K 25 BK","pozice":null,"sap":"U00000049"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"PK","vyrobce":"LAPP","objc":4520081,"nazev":"Vodic H07V-K 1.5 PK","pozice":null,"sap":"1818-4750"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":2.5,"barva":"GNYE","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 GNYE","nazev":"Vodic H07V-K EMBOSS 2.5 GNYE ","pozice":null,"sap":"U00000138D"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"WH","vyrobce":"LAPP","objc":4150405,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 WH","pozice":null,"sap":"1817-9849"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"BK","vyrobce":"LAPP","objc":4160201,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 BK","pozice":null,"sap":"10396622"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":2.5,"barva":"DBUWH","vyrobce":"LAPP","objc":"4522922S","nazev":"Vodic X07V-K 2CHELIX 2.5 DBUWH","pozice":null,"sap":"1817-2188"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.75,"barva":"BURD","vyrobce":"LAPP","objc":"4512252S","nazev":"Vodic X05V-K 2CHELIX 0.75 BURD","pozice":null,"sap":"1817-0766"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"DBU","vyrobce":"LAPP","objc":4520143,"nazev":"Vodic H07V-K 4 DBU","pozice":null,"sap":"V431177"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"PK","vyrobce":"HELUKABEL","objc":26446,"nazev":"Vodic flex LiYv  0.5 PK","pozice":null,"sap":"1817-9647"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"OG","vyrobce":"LAPP","objc":4520091,"nazev":"Vodic H07V-K 1.5 OG","pozice":null,"sap":"10838753"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"OG","vyrobce":"LAPP","objc":4160609,"nazev":"Vodic_Multi-Standard SC 2.1 4 OG","pozice":null,"sap":"1817-9877"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"GNYE","vyrobce":"LAPP","objc":4520005,"nazev":"Vodic H07V-K 10 GNYE ","pozice":null,"sap":"U18002011"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.0","prurez":10,"barva":"BUWH","vyrobce":"LAPP","objc":4160826,"nazev":"Vodic_Multi-Standard SC 2.1 10 BUWH","pozice":null,"sap":"1818-6182"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"RD","vyrobce":"LAPP","objc":4520043,"nazev":"Vodic H07V-K 4 RD","pozice":null,"sap":"V431228"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"WH","vyrobce":"LAPP","objc":"4160305K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1 WH","pozice":null,"sap":"1816-7112"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"2.5","barva":"DBU","vyrobce":"HELUKABEL","objc":"64151","nazev":"Vodic FIVENORM H07V2-K 2.5 (AWG14) DBU","pozice":null,"sap":"1819-3226"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":1.5,"barva":"BURD","vyrobce":"LAPP","objc":"4522251S","nazev":"Vodic X07V-K 2CHELIX 1.5 BURD","pozice":null,"sap":"1817-3113"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"GN","vyrobce":"LAPP","objc":4160411,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 GN","pozice":null,"sap":"1817-9823"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":4,"barva":"BK","vyrobce":"HELUKABEL","objc":64155,"nazev":"Vodic FIVENORM H07V2-K 4 (AWG12) BK","pozice":null,"sap":"1817-2897"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"GY","vyrobce":"LAPP","objc":4520062,"nazev":"Vodic H07V-K 2.5 GY","pozice":null,"sap":"1818-4752"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"WHBU","vyrobce":"LAPP","objc":4160744,"nazev":"Vodic_Multi-Standard SC 2.1 6 WHBU","pozice":null,"sap":"1818-3456"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"GNYE","vyrobce":"LAPP","objc":4160500,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 GNYE","pozice":null,"sap":"1853-3764"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"BN","vyrobce":"HELUKABEL","objc":26440,"nazev":"Vodic flex LiYv 0.5 BN","pozice":null,"sap":"1817-9654"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"GY","vyrobce":"LAPP","objc":4520064,"nazev":"Vodic H07V-K 6 GY","pozice":null,"sap":"10647107"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":4,"barva":"BUWH","vyrobce":"HELUKABEL","objc":29386,"nazev":"Vodic 07V-K 4 BUWH","pozice":null,"sap":"1817-2032"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"4","barva":"DBU","vyrobce":"HELUKABEL","objc":"64167","nazev":"Vodic FIVENORM H07V2-K 4 (AWG12) DBU","pozice":null,"sap":"1819-3239"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1569_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1569","prurez":0.35,"barva":"GY","vyrobce":"HELUKABEL","objc":66206,"nazev":"Vodic UL-Style 1569 0.34 (AWG22)  GY","pozice":null,"sap":"1816-2343"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":2.5,"barva":"OG","vyrobce":"LAPP","objc":4150509,"nazev":"Vodic_Multi-Standard SC 2.2 2.5 OG","pozice":null,"sap":"1817-9870"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"WHBU","vyrobce":"LAPP","objc":4160144,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 WHBU","pozice":null,"sap":"1817-1984"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":25,"barva":"LBU","vyrobce":"LAPP","objc":4521021,"nazev":"Vodic H07V-K 25 LBU","pozice":null,"sap":"10629118"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":1.5,"barva":"RDWH","vyrobce":"LAPP","objc":"4522421S","nazev":"Vodic X07V-K 2CHELIX 1.5 RDWH","pozice":null,"sap":"1816-6328"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":2.5,"barva":"WH","vyrobce":"HELUKABEL","objc":64144,"nazev":"Vodic FIVENORM H07V2-K 2.5 (AWG14) WH","pozice":null,"sap":"1817-2891"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.5,"barva":"DBU","vyrobce":"LAPP","objc":"4511064K","nazev":"Vodic H05V-K EMBOSS 0.5 DBU","pozice":"PH8","sap":"10505930"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"YE","vyrobce":"PZK","objc":5001147,"nazev":"Vodic H07V-K 35 YE","pozice":null,"sap":"1816-5188"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"BN","vyrobce":"LAPP","objc":4520031,"nazev":"Vodic H07V-K 1.5 BN","pozice":"KV-05-2","sap":"10442955"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":35,"barva":"BK","vyrobce":"LAPP","objc":4151101,"nazev":"Vodic_Multi-Standard SC 2.2 35 BK","pozice":null,"sap":"1817-9828"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"DBU","vyrobce":"LAPP","objc":4160114,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 DBU","pozice":null,"sap":"1818-4754"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"DBU","vyrobce":"LAPP","objc":"4160214K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 0.75 DBU","pozice":null,"sap":"1853-3841"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"GNYE","vyrobce":"LAPP","objc":4160200,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 GNYE","pozice":null,"sap":"10559210"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":10,"barva":"LBU","vyrobce":"LAPP","objc":4150802,"nazev":"Vodic_Multi-Standard SC 2.2 10 LBU","pozice":null,"sap":"1817-9830"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":95,"barva":"LBU","vyrobce":"LAPP","objc":4161402,"nazev":"Vodic_Multi-Standard SC 2.1 95 LBU","pozice":null,"sap":"1816-8638"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"GY","vyrobce":"LAPP","objc":4160206,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 GY","pozice":null,"sap":"10838657"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"BK","vyrobce":"LAPP","objc":4520015,"nazev":"Vodic H07V-K 10 BK","pozice":null,"sap":"U00000039"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"BN","vyrobce":"LAPP","objc":4160803,"nazev":"Vodic_Multi-Standard SC 2.1 10 BN","pozice":null,"sap":"1817-9836"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"OG","vyrobce":"LAPP","objc":4520096,"nazev":"Vodic H07V-K 16 OG","pozice":null,"sap":"1816-4186"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"BUWH","vyrobce":"LAPP","objc":4160126,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 BUWH","pozice":null,"sap":"1817-9858"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":25,"barva":"WH","vyrobce":"LAPP","objc":4161005,"nazev":"Vodic_Multi-Standard SC 2.1 25 WH","pozice":null,"sap":"1817-9853"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"VT","vyrobce":"LAPP","objc":4160307,"nazev":"Vodic_Multi-Standard SC 2.1 1 VT","pozice":null,"sap":"1817-8573"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"BUWH","vyrobce":"LAPP","objc":"4160226K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 0.75 BUWH","pozice":null,"sap":"U18533370"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"GY","vyrobce":"LAPP","objc":4160506,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 GY","pozice":null,"sap":"10657652"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"BK","vyrobce":"LAPP","objc":4521012,"nazev":"Vodic H07V-K 35 BK","pozice":null,"sap":"U18002009"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"BN","vyrobce":"LAPP","objc":4510032,"nazev":"Vodic H05V-K 0.75 BN","pozice":null,"sap":"1818-4745"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"GNYE","vyrobce":"LAPP","objc":4150300,"nazev":"Vodic_Multi-Standard SC 2.2 1 GNYE","pozice":null,"sap":"1817-9825"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"WHBU","vyrobce":"LAPP","objc":"4512441S","nazev":"Vodic H05V-K 1x0.5 WHBU","pozice":null,"sap":"1818-5331"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":1.5,"barva":"BK","vyrobce":"LAPP","objc":4520011,"nazev":"Vodic H07V-K 1.5 BK","pozice":"A","sap":"1817-2044"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"BN","vyrobce":"LAPP","objc":4150303,"nazev":"Vodic_Multi-Standard SC 2.2 1 BN","pozice":null,"sap":"1817-9833"},{"skupina_typ":null,"skupina_pouziti":"OD: pomocí SAP: SQ00 označeny materiály k výmazu v závodě 6000 =>> vložen text \"K VÝMAZU\" ve sloupci M pojmenovaném Sloupec3 k takto nalezeným artiklům.","typ":null,"prurez":null,"barva":null,"vyrobce":null,"objc":null,"nazev":null,"pozice":null,"sap":"2018-01-31 00:00:00"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"BK","vyrobce":"LAPP","objc":4510013,"nazev":"Vodic H05V-K 1 BK","pozice":null,"sap":"1816-9517"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":1,"barva":"RDWH","vyrobce":"LAPP","objc":"4512423S","nazev":"Vodic X05V-K 2CHELIX 1 RDWH ","pozice":null,"sap":"10766927"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"WH","vyrobce":"LAPP","objc":4160705,"nazev":"Vodic_Multi-Standard SC 2.1 6 WH","pozice":null,"sap":"10704990"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":1,"barva":"RD","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 1 RD","nazev":"Vodic H05V-K EMBOSS 1 RD","pozice":null,"sap":"U09200111"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.5,"barva":"WH","vyrobce":"LAPP","objc":"4511072K","nazev":"Vodic H05V-K EMBOSS 0.5 WH","pozice":"PH-07-01","sap":"10382964"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"GN","vyrobce":"LAPP","objc":4510121,"nazev":"Vodic H05V-K 0.5 GN","pozice":null,"sap":"10382965"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.75,"barva":"VTWH","vyrobce":"LAPP","objc":"4512372S","nazev":"Vodic X05V-K 2CHELIX 0.75 VTWH ","pozice":null,"sap":"1815-9399"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":50,"barva":"BK","vyrobce":"LAPP","objc":4161201,"nazev":"Vodic_Multi-Standard SC 2.1 50 BK","pozice":null,"sap":"1853-3786"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":1.5,"barva":"GNYE","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 1,5 GNYE","nazev":"Vodic H07V-K EMBOSS 1.5 GNYE ","pozice":null,"sap":"U18003325"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":2.5,"barva":"DBU","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 DBU","nazev":"Vodic H07V-K EMBOSS 2.5 DBU","pozice":null,"sap":"U00000307"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"YE","vyrobce":"LAPP","objc":4160310,"nazev":"Vodic_Multi-Standard SC 2.1 1 YE","pozice":null,"sap":"1817-9857"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":0.5,"barva":"DBU","vyrobce":"HELUKABEL","objc":64087,"nazev":"Vodic FIVENORM H05V2-K 0.5 (AWG22) DBU","pozice":null,"sap":"1818-4201"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"LBU","vyrobce":"LAPP","objc":4520022,"nazev":"Vodic H07V-K 2.5 LBU","pozice":null,"sap":"1853-4078"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":2.5,"barva":"WH","vyrobce":"LAPP","objc":"4520052S","nazev":"Vodic H07V-K 2.5 WH","pozice":null,"sap":"1816-8586"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"WH","vyrobce":"LAPP","objc":4160505,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 WH","pozice":null,"sap":"U18131126"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":1.5,"barva":"BK","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 1,5 BK","nazev":"Vodic H07V-K EMBOSS 1.5 BK","pozice":null,"sap":"U00000041"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":2.5,"barva":"OG","vyrobce":"LAPP","objc":4520092,"nazev":"Vodic H07V-K 2.5 OG","pozice":null,"sap":"1815-9398"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"DBU","vyrobce":"LAPP","objc":4160814,"nazev":"Vodic_Multi-Standard SC 2.1 10 DBU","pozice":null,"sap":"1817-9874"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"DBU","vyrobce":"LAPP","objc":4520146,"nazev":"Vodic H07V-K 16 DBU","pozice":null,"sap":"1815-8734"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":1,"barva":"VT","vyrobce":"LAPP","objc":4510073,"nazev":"Vodic H05V-K 1 VT","pozice":"a,b,kh","sap":"1818-4748"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"YE","vyrobce":"LAPP","objc":4520116,"nazev":"Vodic H07V-K 16 YE","pozice":null,"sap":"1817-3632"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"BN","vyrobce":"LAPP","objc":"4510031S","nazev":"Vodic H05V-K 0.5 BN","pozice":"KV-07-3","sap":"10657965"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"RD","vyrobce":"HELUKABEL","objc":26441,"nazev":"Vodic flex LiYv  0.5 RD","pozice":null,"sap":"1817-9652"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"GNYE","vyrobce":"LAPP","objc":4160800,"nazev":"Vodic_Multi-Standard SC 2.1 10 GNYE","pozice":null,"sap":"10690891"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.5,"barva":"BUWH","vyrobce":"LAPP","objc":"4512261S","nazev":"Vodic X05V-K 2CHELIX 0.5 BUWH","pozice":"KV-08-3","sap":"1816-7057"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"WHBU","vyrobce":"LAPP","objc":4160844,"nazev":"Vodic_Multi-Standard SC 2.1 10 WHBU","pozice":null,"sap":"1816-6253"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":4,"barva":"LBU","vyrobce":"LAPP","objc":4150602,"nazev":"Vodic_Multi-Standard SC 2.2 4 LBU","pozice":null,"sap":"1817-9862"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":70,"barva":"BK","vyrobce":"LAPP","objc":4161301,"nazev":"Vodic_Multi-Standard SC 2.1 70 BK","pozice":null,"sap":"10937055"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":2.5,"barva":"LBU","vyrobce":"HELUKABEL","objc":64141,"nazev":"Vodic FIVENORM H07V2-K 2.5 (AWG14) LBU","pozice":null,"sap":"1817-2880"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"RD","vyrobce":"LAPP","objc":4521042,"nazev":"Vodic H07V-K 35 RD","pozice":null,"sap":"1817-2229"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"RD","vyrobce":"LAPP","objc":4520046,"nazev":"Vodic H07V-K 16 RD","pozice":null,"sap":"10503417"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"OG","vyrobce":"LAPP","objc":4520094,"nazev":"Vodic H07V-K 6 OG","pozice":null,"sap":"10830206"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"RD","vyrobce":"LAPP","objc":4510041,"nazev":"Vodic H05V-K 0.5 RD","pozice":null,"sap":"1817-0734"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":2.5,"barva":"BK","vyrobce":"HELUKABEL","objc":64139,"nazev":"Vodic FIVENORM H07V2-K 2.5 (AWG14) BK","pozice":null,"sap":"1817-2882"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":0.5,"barva":"VT","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 0,5 VT","nazev":"Vodic H05V-K EMBOSS 0.5 VT","pozice":"PH-05-01","sap":"10512376"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"RD","vyrobce":"LAPP","objc":4160804,"nazev":"Vodic_Multi-Standard SC 2.1 10 RD","pozice":null,"sap":"1817-9844"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"LBU","vyrobce":"LAPP","objc":4520025,"nazev":"Vodic H07V-K 10 LBU","pozice":null,"sap":"U18001985"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":1.5,"barva":"RD","vyrobce":"HEIRU","objc":"CYA 1,5 RUDÁ","nazev":"Vodic H07V-K (CYA) 1.5 RD","pozice":null,"sap":"1816-7250"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1015","prurez":0.35,"barva":"WH","vyrobce":"HELUKABEL","objc":60205,"nazev":"Vodic UL-Style 1015 0.34 (AWG22)  WH","pozice":null,"sap":"1816-2342"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"VT","vyrobce":"LAPP","objc":4520073,"nazev":"Vodic H07V-K 4 VT","pozice":null,"sap":"10561166"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"YE","vyrobce":"LAPP","objc":4160610,"nazev":"Vodic_Multi-Standard SC 2.1 4 YE","pozice":null,"sap":"10842052"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"BUWH","vyrobce":"LAPP","objc":4160426,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 BUWH","pozice":null,"sap":"1818-9858"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"BK","vyrobce":"LAPP","objc":4160801,"nazev":"Vodic_Multi-Standard SC 2.1 10 BK","pozice":null,"sap":"10733023"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":95,"barva":"BK","vyrobce":"LAPP","objc":4521015,"nazev":"Vodic H07V-K 95 BK","pozice":null,"sap":"10149629"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"BK","vyrobce":"LAPP","objc":4160701,"nazev":"Vodic_Multi-Standard SC 2.1 6 BK","pozice":null,"sap":"10693202"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":1,"barva":"GNYE","vyrobce":"LAPP","objc":4510003,"nazev":"Vodic H05V-K 1 GNYE ","pozice":"U nas","sap":"U00000055"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"BN","vyrobce":"LAPP","objc":4520035,"nazev":"Vodic H07V-K 10 BN","pozice":null,"sap":"10647104"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":1.5,"barva":"DBU","vyrobce":"HEIRU","objc":"CYA 1,5 TM","nazev":"Vodic H07V-K (CYA) 1.5 DBU","pozice":null,"sap":"1816-7269"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":25,"barva":"GNYE","vyrobce":"LAPP","objc":4521001,"nazev":"Vodic H07V-K 25 GNYE ","pozice":null,"sap":"U00000053"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":25,"barva":"RD","vyrobce":"LAPP","objc":4521041,"nazev":"Vodic H07V-K 25 RD","pozice":null,"sap":"1817-4303"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"BK","vyrobce":"LAPP","objc":4520016,"nazev":"Vodic H07V-K 16 BK","pozice":null,"sap":"U00000093"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"LBU","vyrobce":"LAPP","objc":4160102,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 LBU","pozice":null,"sap":"10692256"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":70,"barva":"BK","vyrobce":"LAPP","objc":4521014,"nazev":"Vodic H07V-K 70 BK","pozice":null,"sap":"1816-7051"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"GN","vyrobce":"LAPP","objc":4510123,"nazev":"Vodic H05V-K 1 GN","pozice":null,"sap":"1816-6329"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.5,"barva":"RD","vyrobce":"LAPP","objc":4150104,"nazev":"Vodic_Multi-Standard SC 2.2 0.5 RD","pozice":null,"sap":"1817-9838"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"BK","vyrobce":"LAPP","objc":"4160301K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1 BK","pozice":null,"sap":"U18533154"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":6,"barva":"BUWH","vyrobce":"HELUKABEL","objc":63432,"nazev":"Vodic FIVENORM H07V2-K 6 (AWG10) BUWH","pozice":null,"sap":"1818-3432"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"RD","vyrobce":"LAPP","objc":4510042,"nazev":"Vodic H05V-K 0.75 RD","pozice":null,"sap":"1816-7043"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"BK","vyrobce":"LAPP","objc":4160601,"nazev":"Vodic_Multi-Standard SC 2.1 4 BK","pozice":null,"sap":"U09200437"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":6,"barva":"BK","vyrobce":"LAPP","objc":4150701,"nazev":"Vodic_Multi-Standard SC 2.2 6 BK","pozice":null,"sap":"1817-9860"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"GNYE","vyrobce":"LAPP","objc":4521002,"nazev":"Vodic H07V-K 35 GNYE ","pozice":null,"sap":"U18002012"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"BK","vyrobce":"LAPP","objc":4160501,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 BK","pozice":null,"sap":"U09200436"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"GNYE","vyrobce":"LAPP","objc":4160700,"nazev":"Vodic_Multi-Standard SC 2.1 6 GNYE","pozice":null,"sap":"10657656"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":95,"barva":"GNYE","vyrobce":"LAPP","objc":4161400,"nazev":"Vodic_Multi-Standard SC 2.1 95 GNYE","pozice":null,"sap":"1816-7824"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"YE","vyrobce":"HELUKABEL","objc":26445,"nazev":"Vodic flex LiYv  0.5 YE","pozice":null,"sap":"1817-9643"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":35,"barva":"WH","vyrobce":"LAPP","objc":4161105,"nazev":"Vodic_Multi-Standard SC 2.1 35 WH","pozice":null,"sap":"1818-9394"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"6","barva":"GNYE","vyrobce":"HELUKABEL","objc":"64172","nazev":"Vodic FIVENORM H07V2-K 6 (AWG10) GNYE","pozice":null,"sap":"1819-3220"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":6,"barva":"RD","vyrobce":"LAPP","objc":4150704,"nazev":"Vodic_Multi-Standard SC 2.2 6 RD","pozice":null,"sap":"1817-9843"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":2.5,"barva":"BURD","vyrobce":"LAPP","objc":"4522252S","nazev":"Vodic X07V-K 2CHELIX 2.5 BURD","pozice":null,"sap":"1817-5056"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"BK","vyrobce":"LAPP","objc":4520012,"nazev":"Vodic H07V-K 2.5 BK","pozice":null,"sap":"1817-2046"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":50,"barva":"RD","vyrobce":"LAPP","objc":4521043,"nazev":"Vodic H07V-K 50 RD","pozice":null,"sap":"1817-4302"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"GNYE","vyrobce":"LAPP","objc":4150400,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 GNYE","pozice":null,"sap":"1818-3997"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":120,"barva":"GNYE","vyrobce":"LAPP","objc":4521006,"nazev":"Vodic H07V-K 120 GNYE ","pozice":null,"sap":"1816-7481"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"GNYE","vyrobce":"LAPP","objc":4510001,"nazev":"Vodic H05V-K 0.5 GNYE","pozice":"KV-08-3","sap":"U18002013"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"GNYE","vyrobce":"LAPP","objc":4160100,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 GNYE","pozice":null,"sap":"1853-3760"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"RD","vyrobce":"LAPP","objc":4160904,"nazev":"Vodic_Multi-Standard SC 2.1 16 RD","pozice":null,"sap":"1817-9845"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"LBU","vyrobce":"LAPP","objc":4520026,"nazev":"Vodic H07V-K 16 LBU","pozice":null,"sap":"U00000062"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":0.75,"barva":"WH","vyrobce":"HELUKABEL","objc":64096,"nazev":"Vodic FIVENORM H05V2-K 0.75 (AWG20) WH","pozice":null,"sap":"1817-2894"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":0.75,"barva":"BK","vyrobce":"LAPP","objc":"4510012K","nazev":"Vodic H05V-K EMBOSS 0.75 BK","pozice":null,"sap":"U00000071"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"OG","vyrobce":"LAPP","objc":4521092,"nazev":"Vodic H07V-K 35 OG","pozice":null,"sap":"1816-2757"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":16,"barva":"BK","vyrobce":"LAPP","objc":4150901,"nazev":"Vodic_Multi-Standard SC 2.2 16 BK","pozice":null,"sap":"1817-9876"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":50,"barva":"BK","vyrobce":"LAPP","objc":4521013,"nazev":"Vodic H07V-K 50 BK","pozice":null,"sap":"U18002008"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"DBU","vyrobce":"LAPP","objc":4160414,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 DBU","pozice":null,"sap":"1818-4761"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"OG","vyrobce":"LAPP","objc":"CYA 10 SM","nazev":"Vodic H07V-K 10 OG","pozice":null,"sap":"10830207"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"WHBU","vyrobce":"LAPP","objc":4160344,"nazev":"Vodic_Multi-Standard SC 2.1 1 WHBU","pozice":null,"sap":"10693201"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"BK","vyrobce":"LAPP","objc":4150301,"nazev":"Vodic_Multi-Standard SC 2.2 1 BK","pozice":null,"sap":"1817-9859"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"LBU","vyrobce":"LAPP","objc":4160702,"nazev":"Vodic_Multi-Standard SC 2.1 6 LBU","pozice":null,"sap":"1853-3846"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"VT","vyrobce":"LAPP","objc":4510072,"nazev":"Vodic H05V-K 0.75 VT","pozice":null,"sap":"1818-4744"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":25,"barva":"LBU","vyrobce":"LAPP","objc":4161002,"nazev":"Vodic_Multi-Standard SC 2.1 25 LBU","pozice":null,"sap":"1816-9012"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":4,"barva":"GNYE","vyrobce":"LAPP","objc":4520003,"nazev":"Vodic H07V-K 4 GNYE","pozice":null,"sap":"1817-2047"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":2.5,"barva":"BUWH","vyrobce":"LAPP","objc":"4522262S","nazev":"Vodic X07V-K 2CHELIX 2.5 BUWH ","pozice":null,"sap":"1853-4105"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"DBU","vyrobce":"LAPP","objc":"4160414K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1.5 DBU","pozice":null,"sap":"1816-7084"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":10,"barva":"WHBU","vyrobce":"HELUKABEL","objc":63438,"nazev":"Vodic FIVENORM H07V2-K 10 (AWG8) WHBU","pozice":null,"sap":"1818-3431"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":1,"barva":"VTWH","vyrobce":"LAPP","objc":"4512373S","nazev":"Vodic X05V-K 2CHELIX 1 VTWH ","pozice":"KV-05-3","sap":"10823802"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"25","barva":"GNYE","vyrobce":"HELUKABEL","objc":"64220","nazev":"Vodic FIVENORM H07V2-K 25 (AWG4) GNYE","pozice":null,"sap":"1819-3221"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"LBU","vyrobce":"LAPP","objc":4510023,"nazev":"Vodic H05V-K 1 LBU","pozice":"KV-06-3","sap":"U18001925"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":25,"barva":"WH","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 25 WH","nazev":"Vodic H07V-K 25 WH","pozice":null,"sap":"1816-9171"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1007_stroj+R","typ":"UL-Style 1007, CSA TR 64","prurez":0.35,"barva":"BK","vyrobce":"HELUKABEL","objc":62101,"nazev":"Vodic UL-Style 1007 0.34 (AWG22)  BK","pozice":null,"sap":"10921397"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"PK","vyrobce":"LAPP","objc":4160408,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 PK","pozice":null,"sap":"10937931"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":"1","barva":"DBUWH","vyrobce":"LAPP","objc":"4160392","nazev":"Vodic_Multi-Standard SC 2.1 1 DBUWH","pozice":null,"sap":"1819-8075"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"OGWH","vyrobce":"LAPP","objc":"4522391S","nazev":"Vodic X07V-K 2CHELIX 1.5 OGWH ","pozice":null,"sap":"1819-0017"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":1,"barva":"DBU","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 1 DBU","nazev":"Vodic H05V-K EMBOSS 1 DBU","pozice":null,"sap":"U09200113"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1007_stroj+R","typ":"UL-Style 1007, CSA TR 64","prurez":0.35,"barva":"RD","vyrobce":"HELUKABEL","objc":62104,"nazev":"Vodic UL-Style 1007 0.34 (AWG22)  RD","pozice":null,"sap":"10921398"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":50,"barva":"GNYE","vyrobce":"LAPP","objc":4521003,"nazev":"Vodic H07V-K 50 GNYE ","pozice":null,"sap":"10442576"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":95,"barva":"BK","vyrobce":"LAPP","objc":4161401,"nazev":"Vodic_Multi-Standard SC 2.1 95 BK","pozice":null,"sap":"10756740"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"WH","vyrobce":"LAPP","objc":"4510052S","nazev":"Vodic H05V-K 0.75 WH","pozice":null,"sap":"U18001915"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.5,"barva":"BN","vyrobce":"LAPP","objc":4150103,"nazev":"Vodic_Multi-Standard SC 2.2 0.5 BN","pozice":null,"sap":"1817-9832"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"WH","vyrobce":"HELUKABEL","objc":26442,"nazev":"Vodic flex LiYv 0.5 WH","pozice":null,"sap":"1817-9657"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"LBU","vyrobce":"LAPP","objc":4160402,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 LBU","pozice":null,"sap":"1853-3866"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"GNYE","vyrobce":"LAPP","objc":4520006,"nazev":"Vodic H07V-K 16 GNYE ","pozice":null,"sap":"U00000092"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"GNYE","vyrobce":"LAPP","objc":4160300,"nazev":"Vodic_Multi-Standard SC 2.1 1 GNYE","pozice":null,"sap":"1818-4759"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"GY","vyrobce":"LAPP","objc":4160306,"nazev":"Vodic_Multi-Standard SC 2.1 1 GY","pozice":null,"sap":"1817-9854"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"BN","vyrobce":"LAPP","objc":4160703,"nazev":"Vodic_Multi-Standard SC 2.1 6 BN","pozice":null,"sap":"10841795"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":6,"barva":"BK","vyrobce":"LAPP","objc":"4520014K","nazev":"Vodic H07V-K EMBOSS 6 BK","pozice":null,"sap":"U00000094"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"BK","vyrobce":"LAPP","objc":"4160401K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1.5 BK","pozice":null,"sap":"U09200435"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.75,"barva":"BUWH","vyrobce":"LAPP","objc":"4512262S","nazev":"Vodic X05V-K 2CHELIX 0.75 BUWH ","pozice":null,"sap":"1817-0404"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"BK","vyrobce":"HELUKABEL","objc":26437,"nazev":"Vodic flex LiYv 0.5 BK","pozice":null,"sap":"1817-9656"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":2.5,"barva":"YE","vyrobce":"LAPP","objc":4520112,"nazev":"Vodic H07V-K 2.5 YE","pozice":null,"sap":"1817-3625"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":1,"barva":"BUWH","vyrobce":"LAPP","objc":"4512263S","nazev":"Vodic X05V-K 2CHELIX 1 BUWH ","pozice":null,"sap":"10766926"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"WHBU","vyrobce":"LAPP","objc":4160644,"nazev":"Vodic_Multi-Standard SC 2.1 4 WHBU","pozice":null,"sap":"10692700"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"DBUWH","vyrobce":"LAPP","objc":4510921,"nazev":"Vodic H05V-K 0.5 DBUWH","pozice":"PH-07-03","sap":"1817-2690"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":2.5,"barva":"BN","vyrobce":"LAPP","objc":4150503,"nazev":"Vodic_Multi-Standard SC 2.2 2.5 BN","pozice":null,"sap":"1817-9835"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":6,"barva":"LBU","vyrobce":"LAPP","objc":4150702,"nazev":"Vodic_Multi-Standard SC 2.2 6 LBU","pozice":null,"sap":"1817-9863"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":1,"barva":"DBU","vyrobce":"LAPP","objc":4510143,"nazev":"Vodic H05V-K 1 DBU","pozice":"Vzadu vitali u stroje","sap":"1816-9515"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.75,"barva":"RD","vyrobce":"LAPP","objc":"4510042K","nazev":"Vodic H05V-K EMBOSS 0.75 RD","pozice":null,"sap":"10430332"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"BUWH","vyrobce":"LAPP","objc":4160526,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 BUWH","pozice":null,"sap":"10732830"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"DBU","vyrobce":"LAPP","objc":4510142,"nazev":"Vodic H05V-K 0.75 DBU","pozice":null,"sap":"1817-9824"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1569_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1569","prurez":0.35,"barva":"PK","vyrobce":"HELUKABEL","objc":66211,"nazev":"Vodic UL-Style 1569 0.34 (AWG22)  PK","pozice":null,"sap":"1816-2347"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":1,"barva":"BKWH","vyrobce":"LAPP","objc":"4512223S","nazev":"Vodic X05V-K 2CHELIX 1 BKWH ","pozice":null,"sap":"1817-5340"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"GY","vyrobce":"LAPP","objc":4510062,"nazev":"Vodic H05V-K 0.75 GY","pozice":null,"sap":"10755333"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"WH","vyrobce":"LAPP","objc":4160905,"nazev":"Vodic_Multi-Standard SC 2.1 16 WH","pozice":null,"sap":"1817-9852"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"WH","vyrobce":"LAPP","objc":4160405,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 WH","pozice":null,"sap":"U18132487"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"WH","vyrobce":"LAPP","objc":4160105,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 WH","pozice":null,"sap":"10914078"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.75,"barva":"RD","vyrobce":"LAPP","objc":4150204,"nazev":"Vodic_Multi-Standard SC 2.2 0.75 RD","pozice":null,"sap":"1817-9839"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":0.75,"barva":"DBU","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 0,75 DBU","nazev":"Vodic H05V-K EMBOSS 0.75 DBU","pozice":null,"sap":"U00000057"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"DBU","vyrobce":"LAPP","objc":4160514,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 DBU","pozice":null,"sap":"10657610"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"LBU","vyrobce":"LAPP","objc":4520023,"nazev":"Vodic H07V-K 4 LBU","pozice":null,"sap":"U18001968"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"UL-Style 1015","prurez":2.5,"barva":"WHRD","vyrobce":"VOLLAND","objc":"0105850846","nazev":"Vodic UL-Style 1015 2.5 (AWG14) WHRD","pozice":null,"sap":"10842442"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":"70","barva":"LBU","vyrobce":"LAPP","objc":4521024,"nazev":"Vodic H07V-K 70 LBU ","pozice":null,"sap":"1819-8664"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"LBU","vyrobce":"LAPP","objc":4520021,"nazev":"Vodic H07V-K 1.5 LBU","pozice":null,"sap":"U18001944"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":95,"barva":"GNYE","vyrobce":"LAPP","objc":4521005,"nazev":"Vodic H07V-K 95 GNYE ","pozice":null,"sap":"1816-2675"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":35,"barva":"GNYE","vyrobce":"LAPP","objc":4161100,"nazev":"Vodic_Multi-Standard SC 2.1 35 GNYE","pozice":null,"sap":"1853-3770"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"GY","vyrobce":"LAPP","objc":4520063,"nazev":"Vodic H07V-K 4 GY","pozice":null,"sap":"1816-6824"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":70,"barva":"GNYE","vyrobce":"LAPP","objc":4161300,"nazev":"Vodic_Multi-Standard SC 2.1 70 GNYE","pozice":null,"sap":"1853-3772"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"DBU","vyrobce":"LAPP","objc":4160614,"nazev":"Vodic_Multi-Standard SC 2.1 4 DBU","pozice":null,"sap":"10656878"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"WHBU","vyrobce":"LAPP","objc":4160544,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 WHBU","pozice":null,"sap":"1817-9878"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"GY","vyrobce":"LAPP","objc":4510061,"nazev":"Vodic H05V-K 0.5 GY","pozice":"KV-08-3","sap":"U00000143"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"VT","vyrobce":"LAPP","objc":4160207,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 VT","pozice":null,"sap":"1817-9856"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":0.75,"barva":"VT","vyrobce":"LAPP","objc":"4510072K","nazev":"Vodic H05V-K EMBOSS 0.75 VT","pozice":null,"sap":"U00000095"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":1.5,"barva":"DBUWH","vyrobce":"LAPP","objc":"4522921S","nazev":"Vodic X07V-K 2CHELIX 1.5 DBUWH","pozice":null,"sap":"1817-2187"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":1.5,"barva":"BNWH","vyrobce":"LAPP","objc":"4522291S","nazev":"Vodic X07V-K 2CHELIX 1.5 BNWH ","pozice":null,"sap":"1819-0018"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"BUWH","vyrobce":"LAPP","objc":4160226,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 BUWH","pozice":null,"sap":"1818-4755"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":1,"barva":"VT","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 1 VT","nazev":"Vodic H05V-K EMBOSS 1 VT","pozice":null,"sap":"U09200114"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"BN","vyrobce":"LAPP","objc":4520033,"nazev":"Vodic H07V-K 4 BN","pozice":null,"sap":"1817-9157"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"GN","vyrobce":"LAPP","objc":4160111,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 GN","pozice":null,"sap":"1818-2888"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"YE","vyrobce":"LAPP","objc":4520111,"nazev":"Vodic H07V-K 1.5 YE","pozice":null,"sap":"1817-3624"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"BUWH","vyrobce":"LAPP","objc":4160326,"nazev":"Vodic_Multi-Standard SC 2.1 1 BUWH","pozice":null,"sap":"U18533363"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"RD","vyrobce":"LAPP","objc":4520042,"nazev":"Vodic H07V-K 2.5 RD","pozice":null,"sap":"1816-7251"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"LBU","vyrobce":"LAPP","objc":4520024,"nazev":"Vodic H07V-K 6 LBU","pozice":null,"sap":"10530822"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1015","prurez":"1","barva":"WH","vyrobce":"HELUKABEL","objc":"60405","nazev":"Vodic UL-Style 1015 1 (AWG18)  WH","pozice":null,"sap":"1818-9084"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"BN","vyrobce":"LAPP","objc":4510033,"nazev":"Vodic H05V-K 1 BN","pozice":null,"sap":"10825393"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":4,"barva":"DBUWH","vyrobce":"HELUKABEL","objc":29399,"nazev":"Vodic 07V-K 4 DBUWH","pozice":null,"sap":"1818-3103"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"DBU","vyrobce":"LAPP","objc":4160214,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 DBU","pozice":null,"sap":"1818-4756"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"GN","vyrobce":"LAPP","objc":4510122,"nazev":"Vodic H05V-K 0.75 GN","pozice":null,"sap":"U18001905"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"GNWH","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 0,5 GNWH","nazev":"Vodic H05V-K 0.5 GNWH","pozice":null,"sap":"1816-8392"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.5,"barva":"BK","vyrobce":"LAPP","objc":4150101,"nazev":"Vodic_Multi-Standard SC 2.2 0.5 BK","pozice":null,"sap":"0920-0081"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"WHBU","vyrobce":"LAPP","objc":4160244,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 WHBU","pozice":null,"sap":"1816-6948"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":150,"barva":"BK","vyrobce":"LAPP","objc":4521017,"nazev":"Vodic H07V-K 150 BK","pozice":null,"sap":"1815-9393"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.5,"barva":"BK","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 0,5 BK","nazev":"Vodic H05V-K EMBOSS 0.5 BK","pozice":"PH","sap":"U18003695"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":50,"barva":"GNYE","vyrobce":"LAPP","objc":4161200,"nazev":"Vodic_Multi-Standard SC 2.1 50 GNYE","pozice":null,"sap":"1816-3013"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"VT","vyrobce":"LAPP","objc":4520075,"nazev":"Vodic H07V-K 10 VT","pozice":null,"sap":"10634094"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"OG","vyrobce":"LAPP","objc":4150409,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 OG","pozice":null,"sap":"1817-9869"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"YE","vyrobce":"LAPP","objc":4520113,"nazev":"Vodic H07V-K 4 YE","pozice":null,"sap":"1818-4753"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.75,"barva":"GNYE","vyrobce":"LAPP","objc":"4510002K","nazev":"Vodic H05V-K EMBOSS 0.75 GNYE ","pozice":null,"sap":"10430139"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"GNWH","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 0,75 GNWH","nazev":"Vodic H05V-K 0.75 GNWH","pozice":null,"sap":"1816-8393"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"WHOG","vyrobce":"LAPP","objc":4160585,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 WHOG","pozice":null,"sap":"1819-4744"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":10,"barva":"BK","vyrobce":"HELUKABEL","objc":64187,"nazev":"Vodic FIVENORM H07V2-K 10 (AWG8) BK","pozice":null,"sap":"1817-2886"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"GY","vyrobce":"LAPP","objc":4160606,"nazev":"Vodic_Multi-Standard SC 2.1 4 GY","pozice":null,"sap":"10840056"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"LBU","vyrobce":"LAPP","objc":4150302,"nazev":"Vodic_Multi-Standard SC 2.2 1 LBU","pozice":null,"sap":"1817-9861"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.75,"barva":"BK","vyrobce":"LAPP","objc":4150201,"nazev":"Vodic_Multi-Standard SC 2.2 0.75 BK","pozice":null,"sap":"1817-9826"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":1,"barva":"GNYE","vyrobce":"LAPP","objc":"4510003K","nazev":"Vodic H05V-K EMBOSS 1 GNYE","pozice":null,"sap":"1818-9409"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":2.5,"barva":"LBU","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 BU","nazev":"Vodic H07V-K EMBOSS 2.5 LBU","pozice":null,"sap":"U18001957"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"LBU","vyrobce":"LAPP","objc":"4160302K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1 LBU","pozice":null,"sap":"U092001630"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":6,"barva":"BK","vyrobce":"LAPP","objc":4520014,"nazev":"Vodic H07V-K 6 BK","pozice":null,"sap":"1816-7274"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"OG","vyrobce":"LAPP","objc":4160709,"nazev":"Vodic_Multi-Standard SC 2.1 6 OG","pozice":null,"sap":"1818-2499"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":6,"barva":"DBU","vyrobce":"LAPP","objc":4160714,"nazev":"Vodic_Multi-Standard SC 2.1 6 DBU","pozice":null,"sap":"1816-3146"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":1.5,"barva":"BK","vyrobce":"HELUKABEL","objc":64123,"nazev":"Vodic FIVENORM H07V2-K 1.5 (AWG16) BK","pozice":null,"sap":"1817-2881"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"GNYE","vyrobce":"LAPP","objc":4160400,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 GNYE","pozice":null,"sap":"1816-9521"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":2.5,"barva":"GY","vyrobce":"LAPP","objc":"4520062K","nazev":"Vodic H07V-K EMBOSS 2.5 GY","pozice":null,"sap":"10412774"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"GNYE","vyrobce":"LAPP","objc":4160900,"nazev":"Vodic_Multi-Standard SC 2.1 16 GNYE","pozice":null,"sap":"1816-7108"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"LBU","vyrobce":"LAPP","objc":4160902,"nazev":"Vodic_Multi-Standard SC 2.1 16 LBU","pozice":null,"sap":"1817-9831"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"VT","vyrobce":"LAPP","objc":4160107,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 VT","pozice":null,"sap":"10692257"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"DBU","vyrobce":"LAPP","objc":"4160314K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1 DBU","pozice":null,"sap":"10657732"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"BK","vyrobce":"LAPP","objc":4160901,"nazev":"Vodic_Multi-Standard SC 2.1 16 BK","pozice":null,"sap":"10915507"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":1.5,"barva":"GNYE","vyrobce":"LAPP","objc":4520001,"nazev":"Vodic H07V-K 1.5 GNYE","pozice":null,"sap":"1817-2043"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"BK","vyrobce":"LAPP","objc":4160101,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 BK","pozice":null,"sap":"1816-2384"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"LBU","vyrobce":"LAPP","objc":4160602,"nazev":"Vodic_Multi-Standard SC 2.1 4 LBU","pozice":null,"sap":"1816-5556"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1007_stroj+R","typ":"UL-Style 1007, CSA TR 64","prurez":0.35,"barva":"WH","vyrobce":"HELUKABEL","objc":62105,"nazev":"Vodic UL-Style 1007 0.34 (AWG22)  WH","pozice":null,"sap":"1818-8510"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":2.5,"barva":"GNWH","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 GNWH","nazev":"Vodic H07V-K 2.5 GNWH","pozice":null,"sap":"1816-8394"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"BN","vyrobce":"LAPP","objc":4160403,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 BN","pozice":null,"sap":"10801308"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"16","barva":"GNYE","vyrobce":"HELUKABEL","objc":"64204","nazev":"Vodic FIVENORM H07V2-K 16 (AWG6) GNYE","pozice":null,"sap":"1819-3238"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":4,"barva":"DBUWH","vyrobce":"LAPP","objc":"4520923K","nazev":"Vodic H07V-K EMBOSS 4 DBUWH","pozice":null,"sap":"1818-3048"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":1,"barva":"RD","vyrobce":"LAPP","objc":4510043,"nazev":"Vodic H05V-K 1 RD","pozice":"KK-C02-08","sap":"1818-4747"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"X07V-K s barevnou spirálou","prurez":2.5,"barva":"GNYE","vyrobce":"LAPP","objc":4520002,"nazev":"Vodic H07V-K 2.5 GNYE","pozice":null,"sap":"1817-2045"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"UL-Style 1015","prurez":1.5,"barva":"WHRD","vyrobce":"VOLLAND","objc":"0105850746","nazev":"Vodic UL-Style 1015 1.5 (AWG16) WHRD","pozice":null,"sap":"1853-4260"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":4,"barva":"BN","vyrobce":"LAPP","objc":4150603,"nazev":"Vodic_Multi-Standard SC 2.2 4 BN","pozice":null,"sap":"1817-9875"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":4,"barva":"GNYE","vyrobce":"LAPP","objc":"4520003K","nazev":"Vodic H07V-K EMBOSS 4 GNYE ","pozice":null,"sap":"U00000056"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"PK","vyrobce":"LAPP","objc":4510081,"nazev":"Vodic H05V-K 0.5 PK","pozice":"KV-08-3","sap":"10822222"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"RD","vyrobce":"LAPP","objc":4150304,"nazev":"Vodic_Multi-Standard SC 2.2 1 RD","pozice":null,"sap":"1817-9840"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"GY","vyrobce":"LAPP","objc":4510063,"nazev":"Vodic H05V-K 1 GY","pozice":"KV-06-3","sap":"U00000144"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":6,"barva":"WH","vyrobce":"HELUKABEL","objc":64176,"nazev":"Vodic FIVENORM H07V2-K 6 (AWG10) WH","pozice":null,"sap":"1817-2890"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"YE","vyrobce":"LAPP","objc":4510113,"nazev":"Vodic H05V-K 1 YE","pozice":"KV-05-3","sap":"10825392"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"GNYE","vyrobce":"LAPP","objc":4510002,"nazev":"Vodic H05V-K 0.75 GNYE ","pozice":null,"sap":"1818-4746"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"YE","vyrobce":"LAPP","objc":4150410,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 YE","pozice":null,"sap":"1817-9872"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":120,"barva":"BK","vyrobce":"LAPP","objc":4161501,"nazev":"Vodic_Multi-Standard SC 2.1 120 BK","pozice":null,"sap":"10944054"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":4,"barva":"WH","vyrobce":"LAPP","objc":4150605,"nazev":"Vodic_Multi-Standard SC 2.2 4 WH","pozice":null,"sap":"1817-9850"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":50,"barva":"OG","vyrobce":"LAPP","objc":4521093,"nazev":"Vodic H07V-K 50 OG","pozice":null,"sap":"1818-3102"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"WH","vyrobce":"LAPP","objc":4160305,"nazev":"Vodic_Multi-Standard SC 2.1 1 WH","pozice":null,"sap":"10761795"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"GN","vyrobce":"LAPP","objc":4160311,"nazev":"Vodic_Multi-Standard SC 2.1 1 GN","pozice":null,"sap":"10840054"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"LBU","vyrobce":"LAPP","objc":4160202,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 LBU","pozice":null,"sap":"U09200063"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"DBU","vyrobce":"LAPP","objc":4520144,"nazev":"Vodic H07V-K 6 DBU","pozice":null,"sap":"10514051"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":50,"barva":"LBU","vyrobce":"LAPP","objc":4521023,"nazev":"Vodic H07V-K 50 LBU","pozice":null,"sap":"1816-3759"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":1,"barva":"DBUWH","vyrobce":"LAPP","objc":"4510923K","nazev":"Vodic H05V-K EMBOSS 1 DBUWH","pozice":null,"sap":"1818-4504"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"GN","vyrobce":"LAPP","objc":4160511,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 GN","pozice":null,"sap":"1816-8391"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":2.5,"barva":"GNYE","vyrobce":"HELUKABEL","objc":64140,"nazev":"Vodic FIVENORM H07V2-K 2.5 (AWG14) GNYE","pozice":null,"sap":"1817-2885"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"GY","vyrobce":"LAPP","objc":4520065,"nazev":"Vodic H07V-K 10 GY","pozice":null,"sap":"10647105"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":6,"barva":"GNYE","vyrobce":"LAPP","objc":"4520004K","nazev":"Vodic H07V-K EMBOSS 6 GNYE ","pozice":null,"sap":"U00000091"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.3","prurez":0.5,"barva":"WH","vyrobce":"LAPP","objc":4150105,"nazev":"Vodic_Multi-Standard SC 2.2 0.5 WH","pozice":null,"sap":"1819-1304"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"RD","vyrobce":"LAPP","objc":4520045,"nazev":"Vodic H07V-K 10 RD","pozice":null,"sap":"U09200110"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":35,"barva":"LBU","vyrobce":"LAPP","objc":4161102,"nazev":"Vodic_Multi-Standard SC 2.1 35 LBU","pozice":null,"sap":"1816-5555"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"BN","vyrobce":"LAPP","objc":4520034,"nazev":"Vodic H07V-K 6 BN","pozice":null,"sap":"10647106"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1007/1569_stroj+R","typ":"UL/cUL-Litze Style 1007/1569","prurez":0.5,"barva":"DBU","vyrobce":"Medikabel","objc":12020014,"nazev":"Vodic UL-Style 1007.1569 0.5 (AWG20) DBU","pozice":null,"sap":"10765371"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":25,"barva":"BK","vyrobce":"LAPP","objc":4161001,"nazev":"Vodic_Multi-Standard SC 2.1 25 BK","pozice":null,"sap":"10733133"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"VT","vyrobce":"HELUKABEL","objc":26444,"nazev":"Vodic flex LiYv  0.5 VT","pozice":null,"sap":"1817-9646"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"BUWH","vyrobce":"LAPP","objc":"4160426K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1.5 BUWH","pozice":null,"sap":"U09200064"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"DBU","vyrobce":"LAPP","objc":4160314,"nazev":"Vodic_Multi-Standard SC 2.1 1 DBU","pozice":null,"sap":"1818-4758"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":2.5,"barva":"VT","vyrobce":"LAPP","objc":4520072,"nazev":"Vodic H07V-K 2.5 VT","pozice":null,"sap":"1818-4751"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.75,"barva":"BK","vyrobce":"LAPP","objc":4510012,"nazev":"Vodic H05V-K 0.75 BK","pozice":null,"sap":"1817-2042"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":0.5,"barva":"YE","vyrobce":"HELUKABEL","objc":64083,"nazev":"Vodic FIVENORM H05V2-K 0.5 (AWG22) YE","pozice":null,"sap":"1819-3245"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"RD","vyrobce":"LAPP","objc":4160304,"nazev":"Vodic_Multi-Standard SC 2.1 1 RD","pozice":null,"sap":"10841518"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"DBU","vyrobce":"LAPP","objc":"4160114K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 0.5 DBU","pozice":null,"sap":"10657733"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":1.5,"barva":"BUWH","vyrobce":"LAPP","objc":"4522261S","nazev":"Vodic X07V-K 2CHELIX 1.5 BUWH ","pozice":null,"sap":"10530821"},{"skupina_typ":"duplicita","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":"10","barva":"BK","vyrobce":"LAPP","objc":"4150801","nazev":"Vodic_Multi-Standard SC 2.2 10 BK","pozice":null,"sap":"1819-3223"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"BN","vyrobce":"LAPP","objc":4160103,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 BN","pozice":null,"sap":"1819-1305"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":0.5,"barva":"DBUWH","vyrobce":"LAPP","objc":"4512921S","nazev":"Vodic X05V-K 2CHELIX 0.5 DBUWH","pozice":"PH-07-03","sap":"1817-2184"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.5,"barva":"GN","vyrobce":"LAPP","objc":"4510121S","nazev":"Vodic H05V-K 0.5 GN","pozice":"PH-07-03","sap":"1816-8389"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":2.5,"barva":"BK","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 BK","nazev":"Vodic H07V-K EMBOSS 2.5 BK","pozice":null,"sap":"U00000040"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X07V-K s barevnou spirálou","prurez":2.5,"barva":"RDWH","vyrobce":"HELUKABEL","objc":29374,"nazev":"Vodic 07V-K 2.5 RDWH","pozice":null,"sap":"1816-9170"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"OG","vyrobce":"LAPP","objc":4160809,"nazev":"Vodic_Multi-Standard SC 2.1 10 OG","pozice":null,"sap":"10925292"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":4,"barva":"GNYE","vyrobce":"HELUKABEL","objc":64156,"nazev":"Vodic FIVENORM H07V2-K 4 (AWG12) GNYE","pozice":null,"sap":"1817-2899"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":1,"barva":"WH","vyrobce":"LAPP","objc":4510053,"nazev":"Vodic H05V-K 1 WH","pozice":"KV-05-3","sap":"10825391"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":2.5,"barva":"RD","vyrobce":"LAPP","objc":4150504,"nazev":"Vodic_Multi-Standard SC 2.2 2.5 RD","pozice":null,"sap":"1817-9841"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1569_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1569","prurez":0.35,"barva":"BK","vyrobce":"HELUKABEL","objc":66201,"nazev":"Vodic UL-Style 1569 0.34 (AWG22)  BK","pozice":null,"sap":"1816-2338"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"LBU","vyrobce":"LAPP","objc":4510022,"nazev":"Vodic H05V-K 0.75 LBU","pozice":null,"sap":"1816-8597"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"WH","vyrobce":"LAPP","objc":4510051,"nazev":"Vodic H05V-K 0.5 WH","pozice":null,"sap":"1816-7032"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1,"barva":"WH","vyrobce":"LAPP","objc":4150305,"nazev":"Vodic_Multi-Standard SC 2.2 1 WH","pozice":null,"sap":"1817-9848"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"X05V-K s barevnou spirálou","prurez":1,"barva":"DBUWH","vyrobce":"LAPP","objc":"4512923S","nazev":"Vodic X05V-K 2CHELIX 1 DBUWH","pozice":"KV-06-3","sap":"1817-2186"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":4,"barva":"RD","vyrobce":"LAPP","objc":4150604,"nazev":"Vodic_Multi-Standard SC 2.2 4 RD","pozice":null,"sap":"1817-9842"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":10,"barva":"WH","vyrobce":"HELUKABEL","objc":64192,"nazev":"Vodic FIVENORM H07V2-K 10 (AWG8) WH","pozice":null,"sap":"1817-9851"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":1,"barva":"RDWH","vyrobce":"HELUKABEL","objc":63354,"nazev":"Vodic FIVENORM H05V2-K 1 (AWG18) RDWH","pozice":null,"sap":"1817-8601"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"BN","vyrobce":"LAPP","objc":4150403,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 BN","pozice":null,"sap":"1817-9834"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":16,"barva":"WH","vyrobce":"LAPP","objc":4520056,"nazev":"Kabel H07V-K 16 WH","pozice":null,"sap":"1816-6825"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"WHOG","vyrobce":"LAPP","objc":4160485,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 WHOG","pozice":null,"sap":"1819-4743"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":25,"barva":"BK","vyrobce":"LAPP","objc":4151001,"nazev":"Vodic_Multi-Standard SC 2.2 25 BK","pozice":null,"sap":"1817-9827"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":16,"barva":"BN","vyrobce":"LAPP","objc":4160903,"nazev":"Vodic_Multi-Standard SC 2.1 16 BN","pozice":null,"sap":"1817-9837"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":240,"barva":"BK","vyrobce":"LAPP","objc":4521019,"nazev":"Vodic H07V-K 240 BK","pozice":null,"sap":"1816-7397"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"OG","vyrobce":"LAPP","objc":4160309,"nazev":"Vodic_Multi-Standard SC 2.1 1 OG","pozice":null,"sap":"10718359"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":2.5,"barva":"RD","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 RD","nazev":"Vodic H07V-K EMBOSS 2.5 RD","pozice":null,"sap":"UV431122"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":16,"barva":"GNYE","vyrobce":"LAPP","objc":4150900,"nazev":"Vodic_Multi-Standard SC 2.2 16 GNYE","pozice":null,"sap":"1817-1638"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"YE","vyrobce":"LAPP","objc":4520114,"nazev":"Vodic H07V-K 6 YE","pozice":null,"sap":"1816-4216"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"VT","vyrobce":"LAPP","objc":4510071,"nazev":"Vodic H05V-K 0.5 VT","pozice":null,"sap":"1818-4743"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":10,"barva":"GY","vyrobce":"LAPP","objc":4160806,"nazev":"Vodic_Multi-Standard SC 2.1 10 GY","pozice":null,"sap":"10840058"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"GNYE","vyrobce":"LAPP","objc":"4160300K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1 GNYE","pozice":null,"sap":"U18533341"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"BK","vyrobce":"LAPP","objc":4160301,"nazev":"Vodic_Multi-Standard SC 2.1 1 BK","pozice":null,"sap":"1816-7111"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":25,"barva":"GNYE","vyrobce":"LAPP","objc":4161000,"nazev":"Vodic_Multi-Standard SC 2.1 25 GNYE","pozice":null,"sap":"10733194"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"GY","vyrobce":"HELUKABEL","objc":26443,"nazev":"Vodic flex LiYv  0.5 GY","pozice":null,"sap":"1817-9644"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"OG","vyrobce":"LAPP","objc":4520093,"nazev":"Vodic H07V-K 4 OG","pozice":null,"sap":"1816-2758"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":1,"barva":"PK","vyrobce":"KABLO VRCHLABÍ","objc":"KV H05V-K 1 PK","nazev":"Vodic H05V-K 1 PK","pozice":null,"sap":"U09200112"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"OG","vyrobce":"LAPP","objc":4160109,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 OG","pozice":null,"sap":"10908612"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":120,"barva":"GNYE","vyrobce":"LAPP","objc":4161500,"nazev":"Vodic_Multi-Standard SC 2.1 120 GNYE","pozice":null,"sap":"1818-5758"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":4,"barva":"WH","vyrobce":"LAPP","objc":4520053,"nazev":"Vodic H07V-K 4 WH","pozice":null,"sap":"1817-9829"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":25,"barva":"RD","vyrobce":"LAPP","objc":4161004,"nazev":"Vodic_Multi-Standard SC 2.1 25 RD","pozice":null,"sap":"1817-9846"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"LBU","vyrobce":"LAPP","objc":4160502,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 LBU","pozice":null,"sap":"10548765"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"GN","vyrobce":"LAPP","objc":4160211,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 GN","pozice":null,"sap":"U18533394"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":1.5,"barva":"LBU","vyrobce":"HELUKABEL","objc":64125,"nazev":"Vodic FIVENORM H07V2-K 1.5 (AWG16) LBU","pozice":null,"sap":"1817-2879"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"RD","vyrobce":"LAPP","objc":4160404,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 RD","pozice":null,"sap":"1816-7143"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"BN","vyrobce":"LAPP","objc":4160203,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 BN","pozice":null,"sap":"U18533364"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"BUWH","vyrobce":"LAPP","objc":4160626,"nazev":"Vodic_Multi-Standard SC 2.1 4 BUWH","pozice":null,"sap":"1816-6664"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1,"barva":"LBU","vyrobce":"LAPP","objc":4160302,"nazev":"Vodic_Multi-Standard SC 2.1 1 LBU","pozice":null,"sap":"1818-4757"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"WH","vyrobce":"LAPP","objc":4160605,"nazev":"Vodic_Multi-Standard SC 2.1 4 WH","pozice":null,"sap":"U18533357"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":120,"barva":"LBU","vyrobce":"LAPP","objc":4161502,"nazev":"Vodic_Multi-Standard SC 2.1 120 LBU","pozice":null,"sap":"1818-0992"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H07V-K","prurez":6,"barva":"GNYE","vyrobce":"LAPP","objc":4520004,"nazev":"Vodic H07V-K 6 GNYE","pozice":null,"sap":"1816-9264"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"GNYE","vyrobce":"LAPP","objc":"4160400K","nazev":"Vodic_Multi-Standard SC 2.1 EMBOSS 1.5 GNYE","pozice":null,"sap":"U18132489"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"WH","vyrobce":"LAPP","objc":"4520051S","nazev":"Vodic H07V-K 1.5 WH","pozice":null,"sap":"1816-8585"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"YE","vyrobce":"LAPP","objc":4160410,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 YE","pozice":null,"sap":"10439934"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":70,"barva":"GNYE","vyrobce":"LAPP","objc":4521004,"nazev":"Vodic H07V-K 70 GNYE ","pozice":null,"sap":"1817-3142"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":10,"barva":"DBU","vyrobce":"LAPP","objc":4520145,"nazev":"Vodic H07V-K 10 DBU","pozice":null,"sap":"U09200095"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_rucne","typ":"H05V-K","prurez":0.5,"barva":"BK","vyrobce":"LAPP","objc":4510011,"nazev":"Vodic H05V-K 0.5 BK","pozice":null,"sap":"1818-4742"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":2.5,"barva":"VT","vyrobce":"KABLO VRCHLABÍ","objc":"KV H07V-K 2,5 VT","nazev":"Vodic H07V-K 2.5 VT","pozice":null,"sap":"U00000308"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.75,"barva":"OGWH","vyrobce":"LAPP","objc":"4512392S","nazev":"Vodic H05V-K 0.75 OGWH","pozice":null,"sap":"1819-9091"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"X05V-K s barevnou spirálou","prurez":0.75,"barva":"WHBU","vyrobce":"LAPP","objc":"4512442S","nazev":"Vodic X05V-K 2CHELIX 0.75 WHBU","pozice":null,"sap":"1817-9847"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":"10","barva":"DBU","vyrobce":"HELUKABEL","objc":"64199","nazev":"Vodic FIVENORM H07V2-K 10 (AWG8) DBU","pozice":null,"sap":"1819-3246"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":185,"barva":"BK","vyrobce":"LAPP","objc":4521018,"nazev":"Vodic H07V-K 185 BK","pozice":null,"sap":"1816-7244"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":35,"barva":"LBU","vyrobce":"LAPP","objc":4521022,"nazev":"Vodic H07V-K 35 LBU","pozice":null,"sap":"1815-7600"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"DBUWH","vyrobce":"HELUKABEL","objc":29527,"nazev":"Vodic H07V-K 6 DBUWH","pozice":null,"sap":"1819-5336"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_rucne","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"BK","vyrobce":"LAPP","objc":4160401,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 BK","pozice":null,"sap":"1818-4760"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":50,"barva":"LBU","vyrobce":"LAPP","objc":4161202,"nazev":"Vodic_Multi-Standard SC 2.1 50 LBU","pozice":null,"sap":"1853-3799"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"BN","vyrobce":"LAPP","objc":4160503,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 BN","pozice":null,"sap":"10841792"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"WHOG","vyrobce":"LAPP","objc":4160685,"nazev":"Vodic_Multi-Standard SC 2.1 4 WHOG","pozice":null,"sap":"1819-4745"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"GNYE","vyrobce":"LAPP","objc":4160600,"nazev":"Vodic_Multi-Standard SC 2.1 4 GNYE","pozice":null,"sap":"10656879"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H05V-K","prurez":0.75,"barva":"BN","vyrobce":"LAPP","objc":"4510032K","nazev":"Vodic H05V-K EMBOSS 0.75 BN","pozice":null,"sap":"U18001901"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"WHBU","vyrobce":"LAPP","objc":4160444,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 WHBU","pozice":null,"sap":"1816-6949"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":4,"barva":"RD","vyrobce":"LAPP","objc":4160604,"nazev":"Vodic_Multi-Standard SC 2.1 4 RD","pozice":null,"sap":"10840057"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_UL-Style 1569_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1570","prurez":0.35,"barva":"GN","vyrobce":"HELUKABEL","objc":66200,"nazev":"Vodic UL-Style 1569 0.34 (AWG22)  GN","pozice":null,"sap":"1816-2336"},{"skupina_typ":"alternativa","skupina_pouziti":"Vodic_UL_MN_UL-Style 1015_stroj+R","typ":"HELUKABEL® SINGLE CORE UL Style 1015","prurez":"1","barva":"DBU","vyrobce":"HELUKABEL","objc":"60415","nazev":"Vodic UL-Style 1015 1 (AWG18)  DBU","pozice":null,"sap":"1818-9083"},{"skupina_typ":"UL_MN_SC 1","skupina_pouziti":"Vodic_UL_MN_SC 1_stroj+R","typ":"MULTI-STANDARD SC 1","prurez":0.5,"barva":"LBU","vyrobce":"LAPP","objc":4180402,"nazev":"Vodic Multi-Standard SC 1 0.5 (AWG20) BU","pozice":null,"sap":"1815-9426"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H05V-K","prurez":0.5,"barva":"OG","vyrobce":"LAPP","objc":4510091,"nazev":"Vodic H05V-K 0.5 OG","pozice":"KV-07-3","sap":"10657964"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":2.5,"barva":"OG","vyrobce":"LAPP","objc":4160509,"nazev":"Vodic_Multi-Standard SC 2.1 2.5 OG","pozice":null,"sap":"10830205"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, PVC single core, UL Style 10269/UL Standard 1063, 600 V, 105°C","prurez":0.75,"barva":"GNYE","vyrobce":"HELUKABEL","objc":64092,"nazev":"Vodic FIVENORM H05V2-K 0.75 (AWG20) GNYE","pozice":null,"sap":"1817-2898"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"OG","vyrobce":"LAPP","objc":4160409,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 OG","pozice":null,"sap":"10812301"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_FIVENORM_stroj+R","typ":"HAR-UL-CSA-AWM-MTW, jednožilový PVC vodič, UL-Style 10269 / UL Standard 1063, 600 V, 105°C","prurez":120,"barva":"GNYE","vyrobce":"HELUKABEL","objc":64300,"nazev":"Vodic FIVENORM H07V2-K 120 (AWG4/0) GNYE","pozice":null,"sap":"1818-7302"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.5,"barva":"YE","vyrobce":"LAPP","objc":4160110,"nazev":"Vodic_Multi-Standard SC 2.1 0.5 YE","pozice":null,"sap":"1818-2463"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":120,"barva":"BK","vyrobce":"LAPP","objc":4521016,"nazev":"Vodic H07V-K 120 BK","pozice":null,"sap":"1816-7153"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"GY","vyrobce":"LAPP","objc":4150406,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 GY","pozice":null,"sap":"1817-9868"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj","typ":"H07V-K","prurez":1.5,"barva":"RD","vyrobce":"LAPP","objc":"4520041K","nazev":"Vodic H07V-K EMBOSS 1.5 RD","pozice":null,"sap":"U431097"},{"skupina_typ":"CE_flexibilni","skupina_pouziti":"Vodic_CE_LiYv","typ":"LiYv","prurez":0.5,"barva":"GN","vyrobce":"HELUKABEL","objc":26447,"nazev":"Vodic flex LiYv 0.5 GN","pozice":null,"sap":"1817-9655"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":0.75,"barva":"LBU","vyrobce":"LAPP","objc":4150202,"nazev":"Vodic_Multi-Standard SC 2.2 0.75 LBU","pozice":null,"sap":"1818-3994"},{"skupina_typ":"UL_MN_SC 2.2","skupina_pouziti":"Vodic_UL_MN_SC 2.2_stroj+R","typ":"MULTI-STANDARD SC 2.2","prurez":1.5,"barva":"RD","vyrobce":"LAPP","objc":4150404,"nazev":"Vodic_Multi-Standard SC 2.2 1.5 RD","pozice":null,"sap":"1818-3996"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"VT","vyrobce":"LAPP","objc":4520071,"nazev":"Vodic H07V-K 1.5 VT","pozice":null,"sap":"U00000166"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":6,"barva":"VT","vyrobce":"LAPP","objc":4520074,"nazev":"Vodic H07V-K 6 VT","pozice":null,"sap":"10561167"},{"skupina_typ":"CE","skupina_pouziti":"Vodic_CE_stroj+R","typ":"H07V-K","prurez":1.5,"barva":"GY","vyrobce":"LAPP","objc":4520061,"nazev":"Vodic H07V-K 1.5 GY","pozice":null,"sap":"U00000139"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":0.75,"barva":"WH","vyrobce":"LAPP","objc":4160205,"nazev":"Vodic_Multi-Standard SC 2.1 0.75 WH","pozice":null,"sap":"U18533365"},{"skupina_typ":"UL_MN_SC 2.1","skupina_pouziti":"Vodic_UL_MN_SC 2.1_stroj+R","typ":"MULTI-STANDARD SC 2.1","prurez":1.5,"barva":"GY","vyrobce":"LAPP","objc":4160406,"nazev":"Vodic_Multi-Standard SC 2.1 1.5 GY","pozice":null,"sap":"1817-9855"}];
+let byCode = new Map(DB.map(d=>[normCode(d.sap), d]));
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi';
+});
+
+function normCode(s){
+  return String(s).trim().toUpperCase().replace(/\s+/g,'');
+}
+
+// ---- File upload: parse an xlsx workbook (any/all sheets), merge into DB ----
+
+function normHeader(h){
+  return String(h==null?'':h).trim().toLowerCase();
+}
+
+function buildColMap(headerRow){
+  const map = {};
+  headerRow.forEach((cell, idx)=>{
+    const h = normHeader(cell);
+    if(!h) return;
+    if(map.sap === undefined && h.startsWith('sap')) map.sap = idx;
+    else if(map.skupina_typ === undefined && h.includes('skupina') && h.includes('typu')) map.skupina_typ = idx;
+    else if(map.skupina_pouziti === undefined && h.includes('skupina') && h.includes('užit')) map.skupina_pouziti = idx;
+    else if(map.pozice === undefined && h === 'pozice') map.pozice = idx;
+    else if(map.typ === undefined && h === 'typ') map.typ = idx;
+    else if(map.prurez === undefined && h.includes('průřez')) map.prurez = idx;
+    else if(map.barva === undefined && h === 'barva') map.barva = idx;
+    else if(map.vyrobce === undefined && h.includes('výrobce')) map.vyrobce = idx;
+    else if(map.objc === undefined && h.includes('obj')) map.objc = idx;
+    else if(map.nazev === undefined && h === 'název') map.nazev = idx;
+  });
+  return map;
+}
+
+function extractSheetRecords(rows){
+  // find header row: first row containing a cell starting with "sap"
+  let headerRowIdx = -1;
+  for(let r = 0; r < rows.length; r++){
+    const row = rows[r] || [];
+    if(row.some(c => normHeader(c).startsWith('sap'))){ headerRowIdx = r; break; }
+  }
+  if(headerRowIdx === -1) return [];
+  const colMap = buildColMap(rows[headerRowIdx]);
+  if(colMap.sap === undefined) return [];
+
+  const records = [];
+  for(let r = headerRowIdx + 1; r < rows.length; r++){
+    const row = rows[r] || [];
+    const rawSap = row[colMap.sap];
+    if(rawSap == null || String(rawSap).trim() === '') continue;
+    const sap = String(rawSap).trim();
+    let pozice = colMap.pozice !== undefined ? row[colMap.pozice] : null;
+    if(pozice != null){
+      pozice = String(pozice).trim();
+      if(pozice === '' || pozice.toUpperCase() === 'NEVIM') pozice = null;
+    } else {
+      pozice = null;
+    }
+    records.push({
+      sap,
+      skupina_typ: colMap.skupina_typ !== undefined ? (row[colMap.skupina_typ] ?? null) : null,
+      skupina_pouziti: colMap.skupina_pouziti !== undefined ? (row[colMap.skupina_pouziti] ?? null) : null,
+      pozice,
+      typ: colMap.typ !== undefined ? (row[colMap.typ] ?? null) : null,
+      prurez: colMap.prurez !== undefined ? (row[colMap.prurez] ?? null) : null,
+      barva: colMap.barva !== undefined ? (row[colMap.barva] ?? null) : null,
+      vyrobce: colMap.vyrobce !== undefined ? (row[colMap.vyrobce] ?? null) : null,
+      objc: colMap.objc !== undefined ? (row[colMap.objc] ?? null) : null,
+      nazev: colMap.nazev !== undefined ? (row[colMap.nazev] ?? null) : null,
+    });
+  }
+  return records;
+}
+
+function mergeRecordLists(lists){
+  // merges records from multiple sheets by SAP code, filling in missing
+  // fields from later sheets and preferring a non-empty position
+  const merged = new Map();
+  for(const list of lists){
+    for(const rec of list){
+      const key = normCode(rec.sap);
+      const existing = merged.get(key);
+      if(!existing){
+        merged.set(key, Object.assign({}, rec));
+        continue;
+      }
+      for(const field of ['skupina_typ','skupina_pouziti','typ','prurez','barva','vyrobce','objc','nazev']){
+        if((existing[field] == null || existing[field] === '') && rec[field] != null && rec[field] !== ''){
+          existing[field] = rec[field];
+        }
+      }
+      if((existing.pozice == null || existing.pozice === '') && rec.pozice){
+        existing.pozice = rec.pozice;
+      }
+    }
+  }
+  return Array.from(merged.values());
+}
+
+const DB_PASSWORD = '123456';
+const pwOverlay = document.getElementById('pwOverlay');
+const pwInput = document.getElementById('pwInput');
+const pwError = document.getElementById('pwError');
+
+function openPwModal(){
+  pwError.classList.remove('show');
+  pwInput.classList.remove('shake');
+  pwInput.value = '';
+  pwOverlay.classList.add('open');
+  setTimeout(()=>pwInput.focus(), 50);
+}
+function closePwModal(){
+  pwOverlay.classList.remove('open');
+}
+function tryUnlock(){
+  if(pwInput.value === DB_PASSWORD){
+    closePwModal();
+    document.getElementById('fileInput').click();
+  } else {
+    pwError.classList.add('show');
+    pwInput.classList.remove('shake');
+    void pwInput.offsetWidth; // restart animation
+    pwInput.classList.add('shake');
+    pwInput.select();
+  }
+}
+
+document.getElementById('updateDbBtn').addEventListener('click', openPwModal);
+document.getElementById('pwCancel').addEventListener('click', closePwModal);
+document.getElementById('pwConfirm').addEventListener('click', tryUnlock);
+pwInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') tryUnlock();
+  if(e.key === 'Escape') closePwModal();
+});
+pwOverlay.addEventListener('click', (e)=>{
+  if(e.target === pwOverlay) closePwModal();
+});
+
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.textContent = 'Načítám soubor…';
+
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const data = new Uint8Array(evt.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const perSheetRecords = wb.SheetNames.map(name=>{
+        const ws = wb.Sheets[name];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+        return extractSheetRecords(rows);
+      });
+      const merged = mergeRecordLists(perSheetRecords);
+      if(merged.length === 0){
+        statusEl.textContent = 'V souboru se nepodařilo najít sloupec SAP č. — zkontroluj formát.';
+        return;
+      }
+      DB = merged;
+      byCode = new Map(DB.map(d=>[normCode(d.sap), d]));
+      document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi (nahráno: ' + file.name + ')';
+      statusEl.textContent = 'Nahráno ' + wb.SheetNames.length + ' listů, ' + DB.length + ' artiklů celkem.';
+      // re-run search with new data if there's something in the input
+      if(document.getElementById('input').value.trim()) runSearch();
+    } catch(err){
+      statusEl.textContent = 'Chyba při čtení souboru: ' + err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function naturalCompare(a, b){
+  const ax = [], bx = [];
+  String(a).replace(/(\d+)|(\D+)/g, (_, d, s)=>{ ax.push([d?parseInt(d,10):Infinity, s||""]); return ""; });
+  String(b).replace(/(\d+)|(\D+)/g, (_, d, s)=>{ bx.push([d?parseInt(d,10):Infinity, s||""]); return ""; });
+  while(ax.length && bx.length){
+    const an = ax.shift(), bn = bx.shift();
+    const nn = (an[0]-bn[0]) || an[1].localeCompare(bn[1]);
+    if(nn) return nn;
+  }
+  return ax.length - bx.length;
+}
+
+function formatQty(num){
+  if(num === '' || num == null || isNaN(num)) return '';
+  // drop trailing .000 style zeros, keep meaningful decimals
+  const rounded = Math.round(num * 1000) / 1000;
+  if(Number.isInteger(rounded)) return String(rounded);
+  return String(rounded).replace(/\.?0+$/,'');
+}
+
+function parseInput(raw){
+  const lines = raw.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  const items = [];
+  const numTokenRe = /^-?\d+(?:[.,]\d+)?$/;
+
+  for(const line of lines){
+    if(!line) continue;
+
+    // A line that's just several codes separated by commas (no name/qty
+    // padding, each piece has no internal whitespace) -> treat each as its
+    // own item with no quantity.
+    const commaParts = line.split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
+    const isPureCodeList = commaParts.length > 1 && commaParts.every(p => !/\s/.test(p));
+    if(isPureCodeList){
+      for(const p of commaParts) items.push({ code: p, qty: '' });
+      continue;
+    }
+
+    const tokens = line.split(/\s+/).filter(Boolean);
+    if(tokens.length === 0) continue;
+
+    const code = tokens[0].replace(/[,;]+$/,'');
+
+    if(tokens.length === 1){
+      items.push({ code, qty: '' });
+      continue;
+    }
+
+    // find the LAST whitespace-separated token that looks purely numeric —
+    // that's the real quantity. Anything between code and it (the product
+    // name/description) is ignored, since we look everything up ourselves.
+    let qty = '';
+    for(let i = tokens.length - 1; i >= 1; i--){
+      const tok = tokens[i].replace(/[,;]+$/,'');
+      if(numTokenRe.test(tok)){
+        // comma here is a decimal separator (e.g. "300,000" = 300)
+        const normalized = tok.replace(',', '.');
+        const val = parseFloat(normalized);
+        qty = formatQty(val);
+        break;
+      }
+    }
+    items.push({ code, qty });
+  }
+  return items;
+}
+
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let lastResults = [];
+
+function runSearch(){
+  const raw = document.getElementById('input').value;
+  const items = parseInput(raw);
+  const resultsPanel = document.getElementById('resultsPanel');
+  const body = document.getElementById('resultsBody');
+  const summary = document.getElementById('summary');
+  const copyBtn = document.getElementById('copyBtn');
+  const excelBtn = document.getElementById('excelBtn');
+
+  if(items.length === 0){
+    resultsPanel.style.display = 'none';
+    copyBtn.style.display = 'none';
+    excelBtn.style.display = 'none';
+    return;
+  }
+
+  lastResults = items.map(it=>{
+    const rec = byCode.get(normCode(it.code));
+    return { input: it.code, qty: it.qty, rec };
+  });
+
+  renderResults();
+  resultsPanel.style.display = 'block';
+  copyBtn.style.display = 'inline-flex';
+  excelBtn.style.display = 'inline-flex';
+}
+
+function renderResults(){
+  const body = document.getElementById('resultsBody');
+  const summary = document.getElementById('summary');
+  const sortByPos = document.getElementById('sortByPos').checked;
+
+  let rows = lastResults.slice();
+  if(sortByPos){
+    rows.sort((a,b)=>{
+      const pa = a.rec && a.rec.pozice ? a.rec.pozice : '~ZZZ';
+      const pb = b.rec && b.rec.pozice ? b.rec.pozice : '~ZZZ';
+      return naturalCompare(pa, pb);
+    });
+  }
+
+  const found = rows.filter(r=>r.rec).length;
+  const missing = rows.length - found;
+  summary.innerHTML = `
+    <span class="pill">Celkem položek: <b>${rows.length}</b></span>
+    <span class="pill">Nalezeno: <b>${found}</b></span>
+    <span class="pill ${missing?'warn':''}">Nenalezeno: <b>${missing}</b></span>
+  `;
+
+  body.innerHTML = rows.map(r=>{
+    if(!r.rec){
+      return `<tr class="row-missing">
+        <td><span class="pos-badge">?</span></td>
+        <td class="mono">${escapeHtml(r.input)}</td>
+        <td colspan="2" class="tag-missing">Artikl nenalezen v databázi</td>
+        <td class="qty">${escapeHtml(r.qty)}</td>
+      </tr>`;
+    }
+    const rec = r.rec;
+    const details = [rec.typ, rec.prurez!=null?rec.prurez+' mm²':null, rec.barva].filter(Boolean).join(' · ');
+    return `<tr>
+      <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
+      <td class="mono">${escapeHtml(rec.sap)}</td>
+      <td>
+        <div class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti)}</div>
+        <div class="sub">${escapeHtml(rec.skupina_pouziti)}</div>
+      </td>
+      <td class="sub">${escapeHtml(details)}</td>
+      <td class="qty">${escapeHtml(r.qty)}</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('searchBtn').addEventListener('click', runSearch);
+document.getElementById('sortByPos').addEventListener('change', renderResults);
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  document.getElementById('input').value = '';
+  document.getElementById('resultsPanel').style.display = 'none';
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('excelBtn').style.display = 'none';
+});
+document.getElementById('input').addEventListener('keydown', (e)=>{
+  if(e.ctrlKey && e.key === 'Enter') runSearch();
+});
+function getSortedRows(){
+  const sortByPos = document.getElementById('sortByPos').checked;
+  let rows = lastResults.slice();
+  if(sortByPos){
+    rows.sort((a,b)=>{
+      const pa = a.rec && a.rec.pozice ? a.rec.pozice : '~ZZZ';
+      const pb = b.rec && b.rec.pozice ? b.rec.pozice : '~ZZZ';
+      return naturalCompare(pa, pb);
+    });
+  }
+  return rows;
+}
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const rows = getSortedRows();
+  const lines = rows.map(r=>{
+    if(!r.rec) return `${r.input}\tNENALEZENO\t\t${r.qty}`;
+    return `${r.rec.pozice||''}\t${r.rec.sap}\t${r.rec.nazev||r.rec.skupina_pouziti}\t${r.qty}`;
+  });
+  const text = 'Pozice\tArtikl\tNázev\tMnožství\n' + lines.join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const label = document.getElementById('copyBtnLabel');
+    const orig = label.textContent;
+    label.textContent = 'Zkopírováno ✓';
+    setTimeout(()=>label.textContent = orig, 1500);
+  });
+});
+
+document.getElementById('excelBtn').addEventListener('click', ()=>{
+  const rows = getSortedRows();
+  const sheetData = [['Pozice', 'Artikl', 'Název', 'Skupina dle použití', 'Typ', 'Průřez mm2', 'Barva', 'Množství']];
+  rows.forEach(r=>{
+    if(!r.rec){
+      sheetData.push([r.input, '', 'NENALEZENO V DATABÁZI', '', '', '', '', r.qty]);
+    } else {
+      const rec = r.rec;
+      sheetData.push([
+        rec.pozice || '',
+        rec.sap,
+        rec.nazev || '',
+        rec.skupina_pouziti || '',
+        rec.typ || '',
+        rec.prurez != null ? rec.prurez : '',
+        rec.barva || '',
+        r.qty
+      ]);
+    }
+  });
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  ws['!cols'] = [
+    { wch: 10 }, { wch: 14 }, { wch: 40 }, { wch: 30 },
+    { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Výběr vodičů');
+  const stamp = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+  XLSX.writeFile(wb, `pozice_vyber_${stamp}.xlsx`);
+});
+</script>
+</body>
+</html>
