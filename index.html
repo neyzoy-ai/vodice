@@ -2,6 +2,10 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Vyhledávač pozic vodičů</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InNoZWF0aEdyYWQiIGN4PSIzNSUiIGN5PSIzMCUiIHI9Ijc1JSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzNDNiNDUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMjAyNDJiIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogICAgPHBhdHRlcm4gaWQ9InBlU3RyaXBlcyIgd2lkdGg9IjMuNiIgaGVpZ2h0PSIzLjYiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8cmVjdCB3aWR0aD0iMy42IiBoZWlnaHQ9IjMuNiIgZmlsbD0iIzRjOWE1YiIvPgogICAgICA8cmVjdCB3aWR0aD0iMS44IiBoZWlnaHQ9IjMuNiIgZmlsbD0iI2Q0YjEzZiIvPgogICAgPC9wYXR0ZXJuPgogIDwvZGVmcz4KICA8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNSIgZmlsbD0idXJsKCNzaGVhdGhHcmFkKSIgc3Ryb2tlPSIjZDk3YTNmIiBzdHJva2Utb3BhY2l0eT0iMC42IiBzdHJva2Utd2lkdGg9IjEuMiIvPgogIDxjaXJjbGUgY3g9IjE2IiBjeT0iMTAuMiIgcj0iNSIgZmlsbD0iIzhhNWEzNCIgc3Ryb2tlPSJyZ2JhKDAsMCwwLDAuNCkiIHN0cm9rZS13aWR0aD0iMC41Ii8+CiAgPGNpcmNsZSBjeD0iMTYiIGN5PSIxMC4yIiByPSIxLjYiIGZpbGw9IiNlM2I5OGEiLz4KICA8Y2lyY2xlIGN4PSIyMS4xIiBjeT0iMTkiIHI9IjUiIGZpbGw9IiM0ZDg0YzQiIHN0cm9rZT0icmdiYSgwLDAsMCwwLjQpIiBzdHJva2Utd2lkdGg9IjAuNSIvPgogIDxjaXJjbGUgY3g9IjIxLjEiIGN5PSIxOSIgcj0iMS42IiBmaWxsPSIjYTljOGVjIi8+CiAgPGNpcmNsZSBjeD0iMTAuOSIgY3k9IjE5IiByPSI1IiBmaWxsPSJ1cmwoI3BlU3RyaXBlcykiIHN0cm9rZT0icmdiYSgwLDAsMCwwLjQpIiBzdHJva2Utd2lkdGg9IjAuNSIvPgogIDxjaXJjbGUgY3g9IjEwLjkiIGN5PSIxOSIgcj0iMS42IiBmaWxsPSIjZTZkNzhmIi8+Cjwvc3ZnPgo=">
 <style>
@@ -48,7 +52,7 @@
   --tbl-row-hover-edge:rgba(242,160,94,0.35);
 }
 *{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;}
 body{
   background:
     radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px) 0 0/30px 30px,
@@ -237,6 +241,7 @@ h1 .accent{
   display:flex;
   align-items:center;
   gap:12px;
+  flex-wrap:wrap;
 }
 .icon-btn{
   flex:none;
@@ -829,8 +834,40 @@ footer{
 }
 
 @media (max-width:640px){
-  .wrap{ padding:22px 14px 44px; }
-  h1{ font-size:1.32rem; }
+  .wrap{ padding:18px 12px 40px; }
+  h1{ font-size:1.28rem; }
+  .eyebrow{ font-size:0.63rem; }
+  header{ gap:16px; }
+  .title-row{ gap:12px; }
+  .logo-mark{ width:44px; height:44px; border-radius:13px; }
+  .header-right{ width:100%; }
+  .icon-btn{ height:42px; padding:0 15px 0 12px; font-size:0.82rem; }
+  .meta{ font-size:0.72rem; padding:7px 12px; max-width:100%; white-space:normal; }
+  .meta span, .meta{ overflow-wrap:anywhere; }
+  .panel{ padding:18px 16px 20px 18px; border-radius:14px; margin-bottom:16px; }
+  .panel h2{ font-size:0.74rem; }
+  .controls{ gap:8px; }
+  button{ padding:10px 16px; font-size:0.85rem; }
+  .hint{ margin-left:0; width:100%; }
+  .db-upload-row{ gap:12px; }
+  .prurez-pill{ padding:7px 13px; font-size:0.79rem; }
+  .baleni-pill{ padding:6px 12px; }
+  table{ font-size:0.81rem; }
+  thead th{ padding:9px 10px; font-size:0.66rem; }
+  tbody td{ padding:8px 10px; }
+  .summary{ gap:8px; font-size:0.78rem; }
+  .summary .pill{ padding:6px 12px; }
+  .modal-box{ padding:22px 20px 18px; }
+  .detail-body{ padding:14px 16px 22px; }
+  .db-list-frame{ max-height:60vh; }
+}
+
+@media (max-width:400px){
+  h1{ font-size:1.12rem; }
+  .eyebrow{ letter-spacing:.1em; }
+  .icon-btn span{ display:none; }
+  .icon-btn{ width:42px; padding:0; justify-content:center; }
+  .detail-row{ grid-template-columns:96px 1fr; }
 }
 
 /* password modal */
