@@ -462,6 +462,14 @@ button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:2px
 .db-upload-text .title{ font-weight:600; font-size:0.94rem; color:var(--text); }
 .db-upload-text .desc{ font-size:0.8rem; color:var(--muted); margin-top:3px; line-height:1.45; }
 .db-upload-row .btn-primary{ flex:none; }
+.db-backup-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.db-backup-row .btn-ghost{ font-size:0.82rem; padding:8px 14px; }
+.db-backup-hint{ margin-top:8px; margin-left:0; line-height:1.5; }
 
 .db-upload-status{
   font-size:0.8rem;
@@ -1303,6 +1311,20 @@ footer{
     </div>
     <div class="db-upload-status" id="uploadStatus"></div>
 
+    <div class="db-backup-row">
+      <button type="button" class="btn-ghost" id="exportDbBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m17 10-5 5-5-5"/><path d="M5 21h14"/></svg>
+        Stáhnout zálohu (.json)
+      </button>
+      <button type="button" class="btn-ghost" id="importDbBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg>
+        Obnovit ze zálohy
+      </button>
+      <input type="file" id="importDbInput" accept=".json" style="display:none">
+    </div>
+    <div class="db-upload-status" id="backupStatus"></div>
+    <p class="hint db-backup-hint">Data se ukládají v prohlížeči automaticky. Pokud si ale v telefonu občas mažeš historii/data prohlížení, prohlížeč tím smaže i tuhle databázi — proto si po nahrání Excelu stáhni i tuto zálohu a v případě potřeby ji nahraj zpět.</p>
+
     <div class="db-divider"></div>
 
     <button type="button" class="db-list-toggle" id="dbListToggleBtn">
@@ -1789,7 +1811,7 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
       renderPrurezPills();
       statusEl.className = 'db-upload-status ' + (saved ? 'is-success' : 'is-error');
       statusEl.textContent = 'Nahráno ' + wb.SheetNames.length + ' listů, ' + DB.length + ' artiklů celkem.'
-        + (saved ? ' Uloženo do prohlížeče — zůstane i po zavření stránky.' : ' POZOR: uložení do prohlížeče selhalo, po zavření stránky se data ztratí!');
+        + (saved ? ' Uloženo do prohlížeče — zůstane i po zavření stránky. Doporučujeme si teď stáhnout i zálohu níže.' : ' POZOR: uložení do prohlížeče selhalo, po zavření stránky se data ztratí — stáhni si zálohu níže!');
       // re-run search with new data if there's something in the input
       if(document.getElementById('input').value.trim()) runSearch();
       if(dbListOpen) renderDbList();
@@ -1799,6 +1821,80 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
     }
   };
   reader.readAsArrayBuffer(file);
+});
+
+// ---- Backup: export current DB to a downloadable .json file, and
+// restore it back in — a safety net in case the browser's localStorage
+// gets cleared (e.g. clearing browsing data/history clears it too, and
+// no website can prevent that from JS). ----
+document.getElementById('exportDbBtn').addEventListener('click', ()=>{
+  const backupStatusEl = document.getElementById('backupStatus');
+  try{
+    const payload = {
+      type: 'pozice-vodicu-zaloha',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: DB.length,
+      data: DB
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href = url;
+    a.download = 'zaloha-databaze-vodicu-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    backupStatusEl.className = 'db-upload-status is-success';
+    backupStatusEl.textContent = 'Záloha (' + DB.length + ' artiklů) byla stažena.';
+  } catch(err){
+    backupStatusEl.className = 'db-upload-status is-error';
+    backupStatusEl.textContent = 'Stažení zálohy selhalo: ' + err.message;
+  }
+});
+
+document.getElementById('importDbBtn').addEventListener('click', ()=>{
+  document.getElementById('importDbInput').click();
+});
+
+document.getElementById('importDbInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const backupStatusEl = document.getElementById('backupStatus');
+  backupStatusEl.className = 'db-upload-status';
+  backupStatusEl.textContent = 'Načítám zálohu…';
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const parsed = JSON.parse(evt.target.result);
+      const records = Array.isArray(parsed) ? parsed : (Array.isArray(parsed && parsed.data) ? parsed.data : null);
+      if(!records || records.length === 0 || !records[0] || records[0].sap === undefined){
+        backupStatusEl.className = 'db-upload-status is-error';
+        backupStatusEl.textContent = 'Soubor nevypadá jako platná záloha databáze.';
+        return;
+      }
+      DB = records;
+      byCode = new Map(DB.map(d=>[normCode(d.sap), d]));
+      const saved = saveDbToStorage(file.name);
+      document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi (obnoveno ze zálohy)';
+      updateDbListToggleCount();
+      selectedPrurez = null;
+      document.getElementById('prurezResults').style.display = 'none';
+      renderPrurezPills();
+      backupStatusEl.className = 'db-upload-status ' + (saved ? 'is-success' : 'is-error');
+      backupStatusEl.textContent = 'Obnoveno ' + DB.length + ' artiklů ze zálohy.'
+        + (saved ? ' Uloženo do prohlížeče.' : ' POZOR: uložení do prohlížeče selhalo!');
+      if(document.getElementById('input').value.trim()) runSearch();
+      if(dbListOpen) renderDbList();
+    } catch(err){
+      backupStatusEl.className = 'db-upload-status is-error';
+      backupStatusEl.textContent = 'Chyba při čtení zálohy: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
 });
 
 function naturalCompare(a, b){
