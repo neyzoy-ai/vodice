@@ -714,6 +714,32 @@ tr.row-clickable{ cursor:pointer; }
   flex:none;
   opacity:0.85;
 }
+/* Barevné odlišení podle Skupiny užití */
+.artikl-badge.usage-rucne{
+  background:linear-gradient(155deg, rgba(108,191,125,0.22), rgba(95,179,124,0.1));
+  color:#7fd396;
+  border-color:rgba(95,179,124,0.4);
+}
+.artikl-badge.usage-strojr{
+  background:linear-gradient(155deg, rgba(111,163,222,0.24), rgba(77,132,196,0.1));
+  color:var(--wire-blue-bright);
+  border-color:rgba(77,132,196,0.45);
+}
+.artikl-badge.usage-stroj{
+  background:linear-gradient(155deg, rgba(242,160,94,0.22), rgba(217,122,63,0.1));
+  color:var(--copper-bright);
+  border-color:rgba(217,122,63,0.4);
+}
+.artikl-badge.usage-strojr:hover{
+  border-color:rgba(111,163,222,0.8);
+  background:linear-gradient(155deg, rgba(111,163,222,0.36), rgba(77,132,196,0.18));
+  box-shadow:0 8px 16px -6px rgba(77,132,196,0.55);
+}
+.artikl-badge.usage-stroj:hover{
+  border-color:rgba(245,170,102,0.8);
+  background:linear-gradient(155deg, rgba(242,160,94,0.34), rgba(217,122,63,0.16));
+  box-shadow:0 8px 16px -6px rgba(217,122,63,0.55);
+}
 .qty{
   font-family:'IBM Plex Mono',monospace;
   font-weight:700;
@@ -1092,6 +1118,53 @@ footer{
 .detail-row dd.empty-val{ color:var(--muted-dim); font-style:italic; font-weight:400; }
 .detail-row dd .mono{ font-weight:600; }
 .detail-pos-highlight dd{ color:var(--copper-bright); font-weight:700; }
+.usage-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-weight:600;
+}
+.usage-badge .usage-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:700;
+  padding:2px 10px;
+  border-radius:100px;
+  white-space:nowrap;
+  font-size:0.72rem;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  flex:none;
+}
+.usage-badge .usage-tag::before{
+  content:'';
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:currentColor;
+  flex:none;
+  opacity:0.9;
+}
+/* Ruční použití (_rucne) — zelená */
+.usage-rucne .usage-tag{
+  background:linear-gradient(155deg, rgba(108,191,125,0.22), rgba(95,179,124,0.1));
+  color:#7fd396;
+  border:1px solid rgba(95,179,124,0.4);
+}
+/* Strojní použití + ruční dotažení (_stroj+R) — modrá */
+.usage-strojr .usage-tag{
+  background:linear-gradient(155deg, rgba(111,163,222,0.24), rgba(77,132,196,0.1));
+  color:var(--wire-blue-bright);
+  border:1px solid rgba(77,132,196,0.45);
+}
+/* Čistě strojní použití (_stroj) — oranžová/copper */
+.usage-stroj .usage-tag{
+  background:linear-gradient(155deg, rgba(242,160,94,0.22), rgba(217,122,63,0.1));
+  color:var(--copper-bright);
+  border:1px solid rgba(217,122,63,0.4);
+}
 @media (max-width:480px){
   .detail-row{ grid-template-columns:108px 1fr; }
   .detail-head{ padding:20px 18px 16px; }
@@ -1980,7 +2053,7 @@ function renderPrurezResults(value){
 
   document.getElementById('prurezBody').innerHTML = matches.map(rec => `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
-      <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
+      <td>${artiklBadgeHtml(rec)}</td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
       <td class="sub">${escapeHtml(rec.barva || '')}</td>
       <td class="sub">${escapeHtml(rec.vyrobce || '')}</td>
@@ -2182,7 +2255,7 @@ function renderResults(){
     }
     return `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
-      <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
+      <td>${artiklBadgeHtml(rec)}</td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
       <td class="sub">${escapeHtml(rec.barva || '')}</td>
       <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
@@ -2314,7 +2387,7 @@ function renderDbList(){
 
   body.innerHTML = list.map(rec => `<tr class="row-clickable" data-sap="${escapeHtml(rec.sap)}">
     <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
-    <td><span class="artikl-badge" data-sap="${escapeHtml(rec.sap)}">${escapeHtml(rec.sap)}</span></td>
+    <td>${artiklBadgeHtml(rec)}</td>
     <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
     <td class="sub">${escapeHtml(rec.barva || '')}</td>
     <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
@@ -2443,7 +2516,7 @@ function relatedItemCardHtml(rec){
   if(rec.vyrobce != null && rec.vyrobce !== '') metaParts.push(`<span><b>Výrobce:</b> ${escapeHtml(String(rec.vyrobce))}</span>`);
   return `<div class="related-item">
     <div class="related-item-top">
-      <span class="artikl-badge" data-sap="${sap}">${sap}</span>
+      ${artiklBadgeHtml(rec)}
       ${baleniChipHtml(rec.baleni)}
     </div>
     <div class="related-item-name${nazev ? '' : ' empty-val'}">${nazev || 'Bez názvu'}</div>
@@ -2493,24 +2566,47 @@ relatedWrap.addEventListener('click', (e)=>{
   toggle.closest('.related-group').classList.toggle('is-open');
 });
 
+function usageBadgeInfo(val){
+  if(val == null) return null;
+  const v = String(val).trim();
+  if(/_stroj\+R$/i.test(v)) return {cls:'usage-strojr', label:'STROJ + R'};
+  if(/_rucne$/i.test(v)) return {cls:'usage-rucne', label:'RUČNĚ'};
+  if(/_stroj$/i.test(v)) return {cls:'usage-stroj', label:'STROJ'};
+  return null;
+}
+
+function artiklBadgeHtml(rec){
+  const usageInfo = usageBadgeInfo(rec.skupina_pouziti);
+  const cls = 'artikl-badge' + (usageInfo ? ' ' + usageInfo.cls : '');
+  const sap = escapeHtml(String(rec.sap));
+  return `<span class="${cls}" data-sap="${sap}">${sap}</span>`;
+}
+
 function openDetailModal(sap){
   const rec = byCode.get(normCode(sap));
   if(!rec){
     detailSapBadge.textContent = sap;
+    detailSapBadge.className = 'artikl-badge';
     detailName.textContent = 'Artikl nebyl nalezen v databázi.';
     detailGrid.innerHTML = '';
     relatedWrap.innerHTML = '';
   } else {
     detailSapBadge.textContent = rec.sap;
+    const detailUsageInfo = usageBadgeInfo(rec.skupina_pouziti);
+    detailSapBadge.className = 'artikl-badge' + (detailUsageInfo ? ' ' + detailUsageInfo.cls : '');
     detailName.textContent = rec.nazev || rec.skupina_pouziti || '';
     detailGrid.innerHTML = DETAIL_FIELD_LABELS.map(([field, label])=>{
       let val = rec[field];
+      const usageInfo = field === 'skupina_pouziti' ? usageBadgeInfo(val) : null;
       if(field === 'prurez' && val != null && val !== '') val = escapeHtml(String(val)) + ' mm²';
       else val = (val != null && val !== '') ? escapeHtml(String(val)) : null;
-      const rowClass = field === 'pozice' && val ? ' detail-pos-highlight' : '';
+      const rowClass = (field === 'pozice' && val ? ' detail-pos-highlight' : '') + (usageInfo ? ' ' + usageInfo.cls : '');
+      const ddContent = (val && usageInfo)
+        ? `<span class="usage-badge"><span class="usage-tag">${usageInfo.label}</span><span>${val}</span></span>`
+        : (val || '—');
       return `<div class="detail-row${rowClass}">
         <dt>${label}</dt>
-        <dd class="${val ? '' : 'empty-val'}">${val || '—'}</dd>
+        <dd class="${val ? '' : 'empty-val'}">${ddContent}</dd>
       </div>`;
     }).join('');
     renderRelatedItems(rec);
