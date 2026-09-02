@@ -778,6 +778,42 @@ input[type=checkbox]{ accent-color:var(--copper); width:15px; height:15px; curso
 .qf-grid-card.usage-rucne:hover{ box-shadow:0 10px 22px -12px rgba(95,179,124,0.5); }
 .qf-grid-card.usage-strojr:hover{ box-shadow:0 10px 22px -12px rgba(77,132,196,0.5); }
 .qf-grid-card.usage-stroj:hover{ box-shadow:0 10px 22px -12px rgba(217,122,63,0.5); }
+/* V mřížce ať vynikne jen skutečná barva vodiče — ostatní odznaky
+   (pozice, artikl, balení) jsou zde záměrně tlumené/neutrální, aby
+   karty nepůsobily jako barevný chaos. Jinde (seznam, tabulka
+   výsledků, detail) zůstávají odznaky beze změny. */
+.qf-grid-card .pos-badge{
+  background:var(--panel-3);
+  color:var(--muted);
+  border-color:var(--line);
+  box-shadow:none;
+}
+.qf-grid-card .pos-badge::before{ opacity:0.5; }
+.qf-grid-card .artikl-badge,
+.qf-grid-card .artikl-badge.usage-rucne,
+.qf-grid-card .artikl-badge.usage-strojr,
+.qf-grid-card .artikl-badge.usage-stroj{
+  background:var(--panel-3);
+  color:var(--muted);
+  border-color:var(--line);
+  box-shadow:none;
+}
+.qf-grid-card .artikl-badge:hover,
+.qf-grid-card .artikl-badge.usage-rucne:hover,
+.qf-grid-card .artikl-badge.usage-strojr:hover,
+.qf-grid-card .artikl-badge.usage-stroj:hover{
+  background:var(--panel-3);
+  border-color:var(--copper);
+  color:var(--copper-bright);
+  box-shadow:none;
+}
+.qf-grid-card .baleni-chip,
+.qf-grid-card .baleni-chip.is-sud,
+.qf-grid-card .baleni-chip.is-krabicka{
+  background:var(--panel-3);
+  color:var(--muted-dim);
+  border-color:var(--line);
+}
 .qf-grid-card-top{
   display:flex;
   align-items:center;
