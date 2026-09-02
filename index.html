@@ -561,6 +561,54 @@ button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:2px
   border-color:transparent;
   box-shadow:0 4px 14px -4px rgba(77,132,196,0.55), inset 0 1px 0 rgba(255,255,255,0.2);
 }
+.prurez-pills--accent-copper .prurez-pill:hover{
+  border-color:var(--copper-bright);
+  color:var(--copper-bright);
+  box-shadow:0 8px 16px -8px rgba(217,122,63,0.45);
+}
+.prurez-pills--accent-copper .prurez-pill.active{
+  background:linear-gradient(155deg, var(--copper-bright), var(--copper));
+  color:#2a1408;
+  border-color:transparent;
+  box-shadow:0 4px 14px -4px rgba(217,122,63,0.55), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.prurez-pill--color{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.prurez-pill--color .wire-swatch{ width:12px; height:12px; }
+.prurez-filter-toggle{
+  cursor:pointer;
+  background:none;
+  border:none;
+  width:100%;
+  justify-content:space-between;
+  padding:0;
+  font:inherit;
+  color:var(--muted);
+  text-align:left;
+  transition:color .2s ease;
+}
+.prurez-filter-toggle:hover{ color:var(--copper-bright); }
+.prurez-filter-toggle-left{ display:flex; align-items:center; gap:7px; }
+.prurez-filter-toggle-right{ display:flex; align-items:center; gap:8px; }
+.prurez-filter-count{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.72rem;
+  font-weight:700;
+  letter-spacing:0;
+  text-transform:none;
+  color:var(--muted-dim);
+  background:var(--panel-3);
+  border-radius:100px;
+  padding:2px 9px;
+}
+.prurez-filter-chevron{ flex:none; color:var(--muted); transition:transform .18s ease; }
+.qf-filter-row.is-open .prurez-filter-chevron{ transform:rotate(180deg); }
+.prurez-pills-collapse{ display:none; margin-top:10px; }
+.qf-filter-row.is-open .prurez-pills-collapse{ display:block; }
+.qf-filter-row.is-open .prurez-filter-toggle{ margin-bottom:0; }
 .prurez-pills{
   display:flex;
   flex-wrap:wrap;
@@ -1727,6 +1775,21 @@ footer{
           <button type="button" class="prurez-pill" data-skupina="UL">UL</button>
         </div>
       </div>
+      <div class="qf-filter-row" id="barvaFilterRow">
+        <button type="button" class="prurez-filter-label prurez-filter-toggle" id="barvaToggleBtn" aria-expanded="false">
+          <span class="prurez-filter-toggle-left">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>
+            Rychlý filtr podle barvy vodiče
+          </span>
+          <span class="prurez-filter-toggle-right">
+            <span class="prurez-filter-count" id="barvaCount"></span>
+            <svg class="prurez-filter-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </span>
+        </button>
+        <div class="prurez-pills-collapse" id="barvaPillsWrap">
+          <div class="prurez-pills prurez-pills--accent-copper" id="barvaPills"></div>
+        </div>
+      </div>
       <div id="prurezResults" style="display:none; margin-top:14px;">
         <div class="qf-toolbar">
           <div class="summary" id="prurezSummary"></div>
@@ -1947,6 +2010,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('dbInfo').textContent = DB.length + ' artiklů v databázi';
   updateDbListToggleCount();
   renderPrurezPills();
+  renderBarvaPills();
 });
 
 function normCode(s){
@@ -2142,9 +2206,11 @@ document.getElementById('fileInput').addEventListener('change', (e)=>{
       updateDbListToggleCount();
       selectedPrurez = null;
       selectedSkupina = null;
+      selectedBarva = null;
       document.querySelectorAll('#skupinaPills .prurez-pill').forEach(b=>b.classList.remove('active'));
       document.getElementById('prurezResults').style.display = 'none';
       renderPrurezPills();
+      renderBarvaPills();
       document.getElementById('downloadAppRow').style.display = '';
       // Browser storage (localStorage) is not reliable in every browser/setup
       // (private mode, file:// restrictions, corporate policies, a freshly
@@ -2330,6 +2396,31 @@ function skupinaGroup(skupinaTyp){
 
 let selectedSkupina = null; // 'CE' | 'UL' | null
 
+// ---- Rychlý filtr podle barvy vodiče ----
+
+let selectedBarva = null;
+
+function getDistinctBarva(){
+  const set = new Set();
+  DB.forEach(rec=>{
+    if(rec.barva == null) return;
+    const b = String(rec.barva).trim().toUpperCase();
+    if(b) set.add(b);
+  });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+
+function renderBarvaPills(){
+  const container = document.getElementById('barvaPills');
+  const values = getDistinctBarva();
+  const countEl = document.getElementById('barvaCount');
+  if(countEl) countEl.textContent = values.length;
+  container.innerHTML = values.map(v=>{
+    const isActive = selectedBarva != null && v === selectedBarva;
+    return `<button type="button" class="prurez-pill prurez-pill--color${isActive ? ' active' : ''}" data-value="${escapeHtml(v)}">${wireSwatchHtml(v)}${escapeHtml(v)}</button>`;
+  }).join('');
+}
+
 // ---- Přepínač zobrazení výsledků rychlého filtru: seznam / mřížka ----
 let quickFilterView = 'list';
 try{
@@ -2412,7 +2503,7 @@ function quickFilterCardHtml(rec){
 }
 
 function renderQuickFilterResults(){
-  if(selectedPrurez == null && selectedSkupina == null){
+  if(selectedPrurez == null && selectedSkupina == null && selectedBarva == null){
     document.getElementById('prurezResults').style.display = 'none';
     return;
   }
@@ -2423,6 +2514,10 @@ function renderQuickFilterResults(){
       if(p == null || Math.abs(p - selectedPrurez) >= 1e-9) return false;
     }
     if(selectedSkupina != null && skupinaGroup(rec.skupina_typ) !== selectedSkupina) return false;
+    if(selectedBarva != null){
+      const b = (rec.barva == null) ? '' : String(rec.barva).trim().toUpperCase();
+      if(b !== selectedBarva) return false;
+    }
     return true;
   });
   matches.sort((a, b)=>{
@@ -2439,6 +2534,7 @@ function renderQuickFilterResults(){
   const labelParts = [];
   if(selectedPrurez != null) labelParts.push('Průřez ' + escapeHtml(formatQty(selectedPrurez)) + ' mm²');
   if(selectedSkupina != null) labelParts.push('Skupina ' + escapeHtml(selectedSkupina));
+  if(selectedBarva != null) labelParts.push('Barva ' + escapeHtml(selectedBarva));
   document.getElementById('prurezSummary').innerHTML =
     `<span class="pill">${labelParts.join(' + ')}: <b>${matches.length}</b> artiklů</span>`;
 
@@ -2489,6 +2585,24 @@ document.getElementById('skupinaPills').addEventListener('click', (e)=>{
     b.classList.toggle('active', b.dataset.skupina === selectedSkupina);
   });
   renderQuickFilterResults();
+});
+
+document.getElementById('barvaPills').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.prurez-pill');
+  if(!btn) return;
+  const value = btn.dataset.value;
+
+  selectedBarva = (selectedBarva === value) ? null : value;
+  document.querySelectorAll('#barvaPills .prurez-pill').forEach(b=>{
+    b.classList.toggle('active', b.dataset.value === selectedBarva);
+  });
+  renderQuickFilterResults();
+});
+
+document.getElementById('barvaToggleBtn').addEventListener('click', ()=>{
+  const row = document.getElementById('barvaFilterRow');
+  const isOpen = row.classList.toggle('is-open');
+  document.getElementById('barvaToggleBtn').setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 });
 
 // A token is treated as a "průřez" token when it's purely numeric
