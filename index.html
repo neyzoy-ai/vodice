@@ -731,6 +731,7 @@ input[type=checkbox]{ accent-color:var(--copper); width:15px; height:15px; curso
 }
 .qf-grid-card-meta b{ color:var(--text); font-weight:600; font-family:'IBM Plex Sans',sans-serif; }
 .qf-grid-card-color{ display:inline-flex; align-items:center; gap:6px; }
+.qf-table-color{ display:inline-flex; align-items:center; gap:7px; }
 .wire-swatch{
   display:inline-block;
   width:13px;
@@ -2445,7 +2446,7 @@ function renderQuickFilterResults(){
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
       <td>${artiklBadgeHtml(rec)}</td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
-      <td class="sub">${escapeHtml(rec.barva || '')}</td>
+      <td class="sub">${rec.barva ? `<span class="qf-table-color">${wireSwatchHtml(rec.barva)}${escapeHtml(rec.barva)}</span>` : ''}</td>
       <td class="sub">${escapeHtml(rec.vyrobce || '')}</td>
       <td class="baleni-cell">${baleniChipHtml(rec.baleni)}</td>
     </tr>`).join('');
@@ -2664,7 +2665,7 @@ function renderResults(){
       <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
       <td>${artiklBadgeHtml(rec)}</td>
       <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
-      <td class="sub">${escapeHtml(rec.barva || '')}</td>
+      <td class="sub">${rec.barva ? `<span class="qf-table-color">${wireSwatchHtml(rec.barva)}${escapeHtml(rec.barva)}</span>` : ''}</td>
       <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
       <td class="qty">${escapeHtml(r.qty)}</td>
       <td class="baleni-cell">${baleniChipHtml(rec.baleni)}</td>
@@ -2796,7 +2797,7 @@ function renderDbList(){
     <td>${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}</td>
     <td>${artiklBadgeHtml(rec)}</td>
     <td class="name">${escapeHtml(rec.nazev || rec.skupina_pouziti || '')}</td>
-    <td class="sub">${escapeHtml(rec.barva || '')}</td>
+    <td class="sub">${rec.barva ? `<span class="qf-table-color">${wireSwatchHtml(rec.barva)}${escapeHtml(rec.barva)}</span>` : ''}</td>
     <td class="sub">${rec.prurez!=null && rec.prurez!=='' ? escapeHtml(rec.prurez)+' mm²' : ''}</td>
     <td class="sub">${escapeHtml(rec.vyrobce || '')}</td>
   </tr>`).join('');
