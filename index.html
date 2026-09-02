@@ -599,6 +599,108 @@ input[type=checkbox]{ accent-color:var(--copper); width:15px; height:15px; curso
   max-height:480px;
 }
 .db-list-frame::-webkit-scrollbar{ width:10px; }
+
+/* ---- Rychlý filtr: přepínač zobrazení (seznam / mřížka) ---- */
+.qf-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.qf-view-toggle{
+  display:flex;
+  gap:3px;
+  padding:3px;
+  flex:none;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:10px;
+}
+.qf-view-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  height:30px;
+  padding:0 12px;
+  border:none;
+  border-radius:7px;
+  background:transparent;
+  color:var(--muted);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:0.78rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background .18s var(--ease), color .18s var(--ease), box-shadow .18s var(--ease);
+}
+.qf-view-btn svg{ flex:none; }
+.qf-view-btn:hover{ color:var(--text); }
+.qf-view-btn.active{
+  background:linear-gradient(155deg, var(--panel-3), var(--copper-soft));
+  color:var(--copper-bright);
+  box-shadow:inset 0 0 0 1px rgba(217,122,63,0.35);
+}
+.qf-grid-frame{
+  overflow-y:auto;
+  max-height:520px;
+  border:1px solid var(--tbl-border);
+  border-radius:12px;
+  background:var(--bg-2);
+  box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 10px 28px -12px rgba(0,0,0,0.6), 0 2px 6px -2px rgba(0,0,0,0.4);
+  padding:14px;
+}
+.qf-grid-frame::-webkit-scrollbar{ width:10px; }
+.qf-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(196px, 1fr));
+  gap:10px;
+}
+.qf-grid-card{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:11px 13px;
+  background:var(--panel-2);
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  transition:border-color .2s var(--ease), transform .2s var(--ease), background .2s var(--ease);
+}
+.qf-grid-card:hover{ border-color:var(--copper); transform:translateY(-2px); background:var(--panel-3); }
+.qf-grid-card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.qf-grid-card-name{
+  font-size:0.83rem;
+  font-weight:600;
+  color:var(--text);
+  line-height:1.32;
+  word-break:break-word;
+}
+.qf-grid-card-name.empty-val{ color:var(--muted-dim); font-style:italic; font-weight:400; }
+.qf-grid-card-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 10px;
+  font-size:0.74rem;
+  color:var(--muted);
+}
+.qf-grid-card-meta b{ color:var(--text); font-weight:600; font-family:'IBM Plex Sans',sans-serif; }
+.qf-grid-empty{
+  color:var(--muted-dim);
+  font-size:0.85rem;
+  text-align:center;
+  padding:24px 8px;
+}
+@media (max-width:640px){
+  .qf-grid{ grid-template-columns:repeat(auto-fill, minmax(148px, 1fr)); }
+}
 .db-filter-input{
   width:100%;
   background:var(--bg-2);
@@ -1554,8 +1656,20 @@ footer{
         <button type="button" class="prurez-pill" data-skupina="UL">UL</button>
       </div>
       <div id="prurezResults" style="display:none; margin-top:14px;">
-        <div class="summary" id="prurezSummary"></div>
-        <div class="table-frame">
+        <div class="qf-toolbar">
+          <div class="summary" id="prurezSummary"></div>
+          <div class="qf-view-toggle" id="qfViewToggle" role="group" aria-label="Zobrazení výsledků">
+            <button type="button" class="qf-view-btn" data-view="list" title="Seznam pod sebou">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Seznam
+            </button>
+            <button type="button" class="qf-view-btn" data-view="grid" title="Mřížka vedle sebe">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              Mřížka
+            </button>
+          </div>
+        </div>
+        <div class="table-frame" id="prurezListView">
           <table>
             <thead>
               <tr>
@@ -1569,6 +1683,9 @@ footer{
             </thead>
             <tbody id="prurezBody"></tbody>
           </table>
+        </div>
+        <div class="qf-grid-frame" id="prurezGridView" style="display:none;">
+          <div class="qf-grid" id="prurezGrid"></div>
         </div>
       </div>
     </div>
@@ -2141,6 +2258,45 @@ function skupinaGroup(skupinaTyp){
 
 let selectedSkupina = null; // 'CE' | 'UL' | null
 
+// ---- Přepínač zobrazení výsledků rychlého filtru: seznam / mřížka ----
+let quickFilterView = 'list';
+try{
+  const savedView = localStorage.getItem('quickFilterView');
+  if(savedView === 'list' || savedView === 'grid') quickFilterView = savedView;
+}catch(e){}
+
+function applyQuickFilterView(){
+  document.getElementById('prurezListView').style.display = (quickFilterView === 'list') ? '' : 'none';
+  document.getElementById('prurezGridView').style.display = (quickFilterView === 'grid') ? '' : 'none';
+  document.querySelectorAll('#qfViewToggle .qf-view-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === quickFilterView);
+  });
+}
+
+document.getElementById('qfViewToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.qf-view-btn');
+  if(!btn) return;
+  quickFilterView = btn.dataset.view;
+  try{ localStorage.setItem('quickFilterView', quickFilterView); }catch(e){}
+  applyQuickFilterView();
+});
+
+function quickFilterCardHtml(rec){
+  const nazev = (rec.nazev != null && rec.nazev !== '') ? escapeHtml(String(rec.nazev)) : null;
+  const metaParts = [];
+  if(rec.barva != null && rec.barva !== '') metaParts.push(`<span><b>${escapeHtml(String(rec.barva))}</b></span>`);
+  if(rec.vyrobce != null && rec.vyrobce !== '') metaParts.push(`<span>${escapeHtml(String(rec.vyrobce))}</span>`);
+  return `<div class="qf-grid-card row-clickable" data-sap="${escapeHtml(rec.sap)}">
+    <div class="qf-grid-card-top">
+      ${rec.pozice ? `<span class="pos-badge">${escapeHtml(rec.pozice)}</span>` : '<span class="sub">bez pozice</span>'}
+      ${baleniChipHtml(rec.baleni)}
+    </div>
+    ${artiklBadgeHtml(rec)}
+    <div class="qf-grid-card-name${nazev ? '' : ' empty-val'}">${nazev || 'Bez názvu'}</div>
+    ${metaParts.length ? `<div class="qf-grid-card-meta">${metaParts.join('')}</div>` : ''}
+  </div>`;
+}
+
 function renderQuickFilterResults(){
   if(selectedPrurez == null && selectedSkupina == null){
     document.getElementById('prurezResults').style.display = 'none';
@@ -2181,7 +2337,12 @@ function renderQuickFilterResults(){
       <td class="baleni-cell">${baleniChipHtml(rec.baleni)}</td>
     </tr>`).join('');
 
+  document.getElementById('prurezGrid').innerHTML = matches.length
+    ? matches.map(quickFilterCardHtml).join('')
+    : `<div class="qf-grid-empty">Žádné artikly nenalezeny</div>`;
+
   document.getElementById('prurezResults').style.display = 'block';
+  applyQuickFilterView();
 }
 
 document.getElementById('prurezPills').addEventListener('click', (e)=>{
@@ -2754,7 +2915,7 @@ document.addEventListener('click', (e)=>{
     openDetailModal(badge.dataset.sap);
     return;
   }
-  const row = e.target.closest('tr.row-clickable[data-sap]');
+  const row = e.target.closest('tr.row-clickable[data-sap], .qf-grid-card[data-sap]');
   if(row){
     openDetailModal(row.dataset.sap);
     return;
