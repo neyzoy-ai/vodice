@@ -2652,6 +2652,23 @@ document.getElementById('barvaPills').addEventListener('click', (e)=>{
   renderQuickFilterResults();
 });
 
+// Vymazání výběru v konkrétním panelu rychlého filtru (voláno při jeho zavření)
+function clearQuickFilterPanel(panelId){
+  if(panelId === 'prurezPillsPanel'){
+    selectedPrurez = null;
+    document.querySelectorAll('#prurezPills .prurez-pill').forEach(b=>b.classList.remove('active'));
+    updateFilterToggleActiveState('toggle-prurez', false);
+  } else if(panelId === 'skupinaPillsPanel'){
+    selectedSkupina = null;
+    document.querySelectorAll('#skupinaPills .prurez-pill').forEach(b=>b.classList.remove('active'));
+    updateFilterToggleActiveState('toggle-skupina', false);
+  } else if(panelId === 'barvaPillsPanel'){
+    selectedBarva = null;
+    document.querySelectorAll('#barvaPills .prurez-pill').forEach(b=>b.classList.remove('active'));
+    updateFilterToggleActiveState('toggle-barva', false);
+  }
+}
+
 // Přepínání jednotlivých panelů rychlých filtrů (rozkliknutí tlačítka)
 document.querySelectorAll('.qf-filter-toggle-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -2660,6 +2677,11 @@ document.querySelectorAll('.qf-filter-toggle-btn').forEach(btn=>{
     const isOpen = panel.classList.toggle('is-open');
     btn.classList.toggle('is-open', isOpen);
     btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    if(!isOpen){
+      // Zavření panelu zruší i vše, co v něm bylo označené.
+      clearQuickFilterPanel(btn.dataset.panel);
+      renderQuickFilterResults();
+    }
   });
 });
 
